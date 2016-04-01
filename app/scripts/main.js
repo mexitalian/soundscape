@@ -4,7 +4,7 @@ let musicManager = function() {
   let soundfile = "../media/hayley.mp3";
   let audio = new Audio(soundfile);
   let isPlaying = false;
-  let toggle = function() {
+  let toggle = function(callback) {
     if (isPlaying) {
       audio.pause();
     }
@@ -12,13 +12,18 @@ let musicManager = function() {
       audio.play();
     }
     isPlaying = !isPlaying;
-    return isPlaying ? "Pause" : "Play";;
+
+    if (typeof callback == "function") {
+      callback.apply({isPlaying});
+    }
   };
-  return {toggle};
+  return {toggle, isPlaying};
 }();
 
 let $playbackBtn = $(".js-play");
-$playbackBtn.on("click", function(ev) {
-  let newActionText = musicManager.toggle();
-  this.textContent = newActionText;
+$playbackBtn.on("click", function() {
+  let self = this;
+  musicManager.toggle(function() {
+    self.textContent = this.isPlaying ? "Pause" : "Play";
+  });
 });
