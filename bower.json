@@ -2,6 +2,7 @@
   "name": "soundcloudscape",
   "private": true,
   "dependencies": {
-    "jquery": "^2.2.2"
+    "jquery": "^2.2.2",
+    "velocity": "^1.2.3"
   }
 }
