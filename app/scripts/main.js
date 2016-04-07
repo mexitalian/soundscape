@@ -1,9 +1,36 @@
+let player; // to be populated on soundcloud connect success
+
+let soundcloudManager = function(tracks) {
+
+  let track = tracks[ Math.floor(Math.random() * tracks.length) ];
+  let url = `${track.stream_url}?client_id=db0249f51570a7fce24a3013e71009fd`;
+  let endpoint = track.stream_url.replace(/https:\/\/api.soundcloud.com\//, "");
+  var audio = new Audio();
+
+  // SC.get(`/tracks/${trackId}`).then(function(track) {
+  //   debugger;
+  // });
+
+  // SC.get(endpoint, {allow_redirects: false});
+
+  audio.src = url;
+  audio.play();
+
+  // SC.get(`/tracks/${track.id}`).then(function(track){
+    // player.play();
+  // });
+
+  return {tracks};
+};
+
 let musicManager = function() {
 
   let soundfile = "../media/hayley.mp3";
+  // let soundfile = "//api.soundcloud.com/tracks/257220512/stream";
   let audio = new Audio(soundfile);
   let isPlaying = false;
   let toggle = function(callback) {
+
     if (isPlaying) {
       audio.pause();
     }
@@ -16,8 +43,8 @@ let musicManager = function() {
       callback.apply({isPlaying});
     }
   };
-  return {audio, toggle, isPlaying};
-}();
+  return {tracks, audio, toggle, isPlaying};
+};
 
 let waveformManager = function() {
 
@@ -36,10 +63,11 @@ let waveformManager = function() {
 let dom = function() {
 
   let $playbackBtn = $(".js-play");
+  let $connectSoundcloud = $(".js-connect-soundcloud");
   let $waveContainer = $(".js-wave-container");
   let $vessel = $(".js-vessel");
 
-  return {$playbackBtn, $waveContainer, $vessel};
+  return {$playbackBtn, $connectSoundcloud, $waveContainer, $vessel};
 }();
 
 // TMP: hard coded will get these from soundcloud api
@@ -51,7 +79,7 @@ dom.$playbackBtn.on("click", function() {
 
   let self = this;
 
-  musicManager.toggle(function() {
+  player.toggle(function() {
     self.textContent = this.isPlaying ? "Pause" : "Play";
   });
 
@@ -64,11 +92,23 @@ dom.$playbackBtn.on("click", function() {
   });
 });
 
+dom.$connectSoundcloud.on("click", function() {
+
+  SC.connect().then(function(){
+    return SC.get('/tracks');
+  }).then(function(tracks) {
+    console.log(tracks);
+    player = new soundcloudManager(tracks);
+  });
+});
+
 
 dom.$waveContainer.css({
   width: `${waveformManager.width*50}px`,
   backgroundImage: `url(${waveformManager.src})`
 });
+
+
 
 // Desktop
 
