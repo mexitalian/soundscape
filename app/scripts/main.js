@@ -1,5 +1,5 @@
+/*
 let player; // to be populated on soundcloud connect success
-
 let soundcloudManager = function(tracks) {
 
   let track = tracks[ Math.floor(Math.random() * tracks.length) ];
@@ -59,19 +59,21 @@ let waveformManager = function() {
     height: image.height
   };
 }();
+*/
 
 let dom = function() {
 
   let $playbackBtn = $(".js-play");
   let $connectSoundcloud = $(".js-connect-soundcloud");
-  let $waveContainer = $(".js-wave-container");
-  let $vessel = $(".js-vessel");
 
-  return {$playbackBtn, $connectSoundcloud, $waveContainer, $vessel};
+  return {$playbackBtn, $connectSoundcloud};
 }();
+
+dom.$playbackBtn.on("click", togglePlay);
 
 // TMP: hard coded will get these from soundcloud api
 // and from the on the fly getting and creation of the graphic assets
+/*
 let audioDuration = 261093;
 let waveformWidth = "82000px";
 
@@ -91,7 +93,7 @@ dom.$playbackBtn.on("click", function() {
     duration: audioDuration
   });
 });
-
+*/
 dom.$connectSoundcloud.on("click", function() {
 
   SC.connect().then(function(){
@@ -102,16 +104,16 @@ dom.$connectSoundcloud.on("click", function() {
   });
 });
 
-
+/*
 dom.$waveContainer.css({
   width: `${waveformManager.width*50}px`,
   backgroundImage: `url(${waveformManager.src})`
 });
-
+*/
 
 
 // Desktop
-
+/*
 let onKeypress = function(ev) {
   console.log("upwards");
   ev.preventDefault();
@@ -133,7 +135,7 @@ $(document).on("keyup", ev => {
   $(document).one("keypress", onKeypress);
   dom.$vessel.velocity("stop").velocity({translateY: "200"}, {duration: 2500});
 });
-
+*/
 
 // Need a mobile on tap binding
 
