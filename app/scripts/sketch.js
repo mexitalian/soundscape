@@ -1,11 +1,12 @@
 let sound, fft;
+let fr = 60;
 let SPEED = 1;
+let peaksPerScreen = 4;
 
 let cnv; // canvas
 let wavePG; // processing graphic, n::note graphic is not the way, t::todo remove
 
 let waveWidth;
-let waveXPos;
 let waveManager;
 
 let WaveformManager = function(peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
@@ -16,29 +17,36 @@ let WaveformManager = function(peaksPerScreen, secondsPerScreen) { // t::todo co
   let peakDistance = width / peaksPerScreen;
   let peakResolution = sound.duration() * 4; // t::todo needs to account for parts of a second
   let peaks = sound.getPeaks(peakResolution); // waveform for full audio <- add resolution here
-  let screenCount = 0;
+  // let screenCount = 0;
+  let offsetX = 0;
+  let vertices = [];
+
+  let updateOffsetX = function() {
+    offsetX = Math.floor( (offsetX + (width / fr)) % peakDistance );
+    console.log(offsetX);
+  };
 
   let getVertices = function() {
 
-    let vertices = [];
+    vertices = [];
 
-    for (let i=0; i<peaksPerScreen; i++) {
+    for (let i=0; i<peaksPerScreen+2; i++) {
 
-      let j = i + (screenCount * peaksPerScreen);
-      console.log((peakDistance/2) + (i * peakDistance));
+      let j = i + Math.floor(positionX/peakDistance);
+
       vertices.push([
-        Math.round((peakDistance/2) + (i * peakDistance)),
+        Math.floor(i * peakDistance),//Math.round((peakDistance/2) + (i * peakDistance)),
         Math.round( map(peaks[j], -1, 1, height/8, height-(height/8)) )
       ]);
     }
-    screenCount++;
-
-    return vertices;
+    // screenCount++;
   };
-  let drawVertices = function() {
 
-    let vertices = getVertices();
-    console.log(vertices);
+  this.draw = function() {
+
+    getVertices();
+    updateOffsetX();
+
     background(0);
     beginShape();
     fill(255,0,0);
@@ -47,21 +55,25 @@ let WaveformManager = function(peaksPerScreen, secondsPerScreen) { // t::todo co
 
     // upper limit
     for (let v of vertices) {
-      vertex(v[0], v[1] - height/4);
+      let x = v[0] - offsetX,
+          y = v[1] - height/4;
+      vertex(x, y);
     }
 
     // lower limit
     for (let v of vertices.reverse()) {
-      vertex(v[0], height/4 + v[1]);
+      let x = v[0] - offsetX,
+          y = height/4 + v[1];
+      vertex(x, y);
     }
 
     endShape();
   };
 
   // init
-  for (let i=0; i < Math.floor(sound.duration()); i++) {
-    sound.addCue(i, drawVertices);
-  }
+  // for (let i=0; i < Math.floor(sound.duration()); i++) {
+  //   sound.addCue(i, getVertices);
+  // }
 };
 
 function preload() {
@@ -70,30 +82,33 @@ function preload() {
 
 function setup() {
 
+  frameRate(fr);
   cnv = createCanvas($(window).width(), 400);
   cnv.mouseClicked(togglePlay);
   // fft = new p5.FFT();
   // sound.amp(0.2);
-/*
-  let waveVertices = [];
-  for (let i in WAVEFORM) {
-    waveVertices.push([
-      Math.round(i * stepWidth),
-      Math.round(map(WAVEFORM[i], -1, 1, 0, height/2))
-    ]);
-  }
-*/
-  waveManager = new WaveformManager(4, SPEED);
+  waveWidth = Math.floor(sound.duration() * width);
+  waveManager = new WaveformManager(peaksPerScreen, SPEED);
 
   background(0);
 }
 
-
 function draw() {
   if (sound.isPlaying()) {
-
+    waveManager.draw();
+    updatePositionX();
   }
 }
+
+let positionX = 0;
+let updatePositionX = function() {
+  if (positionX<waveWidth) {
+    positionX += Math.floor(width / fr);
+  }
+  else {
+    positionX = 0;
+  }
+};
 
 // fade sound if mouse is over canvas
 let togglePlay = function() {
@@ -102,7 +117,7 @@ let togglePlay = function() {
   } else {
     sound.loop();
   }
-}
+};
 
 /*
 let sketch = function() {
@@ -110,8 +125,3 @@ let sketch = function() {
   return {togglePlay};
 }();
 */
-
-
-
-
-
