@@ -1,27 +1,27 @@
-/*
-let player; // to be populated on soundcloud connect success
-let soundcloudManager = function(tracks) {
+let player = "hello", myp5; // to be populated on soundcloud connect success
 
-  let track = tracks[ Math.floor(Math.random() * tracks.length) ];
-  let url = `${track.stream_url}?client_id=db0249f51570a7fce24a3013e71009fd`;
-  let endpoint = track.stream_url.replace(/https:\/\/api.soundcloud.com\//, "");
-  var audio = new Audio();
+let SoundcloudManager = function(tracks) {
+
+  this.tracks = tracks;
+  this.urls = tracks.map(function(track, i) {
+    return `${track.stream_url}?client_id=db0249f51570a7fce24a3013e71009fd`;
+  });
+
+  // let track = tracks[ Math.floor(Math.random() * tracks.length) ];
+  // let url = `${track.stream_url}?client_id=db0249f51570a7fce24a3013e71009fd`;
+  // let endpoint = track.stream_url.replace(/https:\/\/api.soundcloud.com\//, "");
+  // var audio = new Audio();
 
   // SC.get(`/tracks/${trackId}`).then(function(track) {
   //   debugger;
   // });
-
   // SC.get(endpoint, {allow_redirects: false});
-
-  audio.src = url;
-  audio.play();
-
   // SC.get(`/tracks/${track.id}`).then(function(track){
     // player.play();
   // });
-
-  return {tracks};
+  // return {tracks, trackUrls};
 };
+/*
 
 let musicManager = function() {
 
@@ -69,7 +69,7 @@ let dom = function() {
   return {$playbackBtn, $connectSoundcloud};
 }();
 
-dom.$playbackBtn.on("click", togglePlay);
+// dom.$playbackBtn.on("click", togglePlay);
 
 // TMP: hard coded will get these from soundcloud api
 // and from the on the fly getting and creation of the graphic assets
@@ -97,10 +97,13 @@ dom.$playbackBtn.on("click", function() {
 dom.$connectSoundcloud.on("click", function() {
 
   SC.connect().then(function(){
-    return SC.get('/tracks');
-  }).then(function(tracks) {
-    console.log(tracks);
-    player = new soundcloudManager(tracks);
+    return SC.get('/playlists/213732954');
+  }).then(function(pl) {
+
+    // console.log(pl.tracks);
+
+    player = new SoundcloudManager(pl.tracks);
+    myp5 = new p5(sketch);
   });
 });
 
