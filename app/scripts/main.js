@@ -1,5 +1,14 @@
 let player = "hello", myp5; // to be populated on soundcloud connect success
 
+/*
+// Check for the various File API support.
+if (window.File && window.FileReader && window.FileList && window.Blob) {
+  // Great success! All the File APIs are supported.
+} else {
+  alert('The File APIs are not fully supported in this browser.');
+}
+*/
+
 let SoundcloudManager = function(tracks) {
 
   this.tracks = tracks;
@@ -21,8 +30,12 @@ let SoundcloudManager = function(tracks) {
   // });
   // return {tracks, trackUrls};
 };
-/*
 
+let localAudioManager = function(tracks) {
+  this.urls = tracks;
+};
+
+/*
 let musicManager = function() {
 
   let soundfile = "../media/hayley.mp3";
@@ -60,6 +73,41 @@ let waveformManager = function() {
   };
 }();
 */
+
+let handleFileSelect = function(ev) {
+
+  let files = ev.target.files; // FileList object
+  let audioUrls = [];
+  let reader = new FileReader();
+  let output = [];
+  let audio = new Audio();
+
+  console.log("// files is a FileList of File objects. List some properties.");
+
+  for (let i = 0, f; f = files[i]; i++) { // look at using .filter()
+
+    // Only process audio files.
+    if (!f.type.match('audio.*')) {
+      continue;
+    }
+
+    output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') <br>- ',
+      f.size, ' bytes, last modified: ',
+      f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
+      '</li>');
+
+    audioUrls.push(f);
+
+  }
+  document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
+
+  if (audioUrls.length > 0) {
+    player = new localAudioManager(audioUrls);
+    myp5 = new p5(sketch);
+  }
+};
+
+document.querySelector('.js-files').addEventListener('change', handleFileSelect, false);
 
 let dom = function() {
 
@@ -106,6 +154,16 @@ dom.$connectSoundcloud.on("click", function() {
     myp5 = new p5(sketch);
   });
 });
+
+
+/*
+dom.$getLocalFile.on("click", function() {
+  // let's get the filereader going
+  
+});
+*/
+
+
 
 /*
 dom.$waveContainer.css({

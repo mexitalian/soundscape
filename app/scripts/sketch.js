@@ -110,7 +110,7 @@ var sketch = function(p) {
 
   p.preload = function() {
     sound = p.loadSound(url); // put in the soundcloud retrieved URL
-    sound = p.loadSound('../media/hayley.mp3'); // put in the soundcloud retrieved URL
+    // sound = p.loadSound('../media/hayley.mp3');
   };
 
   p.setup = function() {
