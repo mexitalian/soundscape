@@ -7,8 +7,8 @@ var sketch = function(p) {
   let peaksPerScreenBuffer = 2;
 
   let cnv; // canvas
-  let waveManager;
-  let url = player.urls[ Math.floor(Math.random() * player.urls.length) ];
+  let waveManager, player;
+  let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
 
@@ -48,7 +48,7 @@ var sketch = function(p) {
       for (let i=0; i < peaksPerScreen+peaksPerScreenBuffer; i++) {
 
         let j = i + Math.floor(positionX/peakDistance);
-        console.log(j);
+        // console.log(j);
 
         vertices.push([
           Math.floor(i * peakDistance),//Math.round((peakDistance/2) + (i * peakDistance)),
@@ -71,7 +71,6 @@ var sketch = function(p) {
 
       updateVars();
 
-      p.background(0);
       p.beginShape();
       p.fill(255,0,0);
       p.stroke(255,0,0);
@@ -100,6 +99,33 @@ var sketch = function(p) {
     // }
   };
 
+  let PlayerManager = function() {
+
+    let thrust;
+    let x = p.width / 2; // x is always the same, center of screen
+    let y = p.height / 2; // begin at center
+    let w = 50;
+    let h = w;
+    let hasThrust = false;
+
+    $(document).on("thrust", function() {
+      hasThrust = true;
+    });
+    $(document).on("gravity", function() {
+      hasThrust = false;
+    });
+
+    let draw = function() {
+
+      y = hasThrust ? y-1 : y+1;
+
+      p.fill(255);
+      p.ellipse(x, y, w, h); // x, y, w, h
+    }
+
+    return {draw, thrust};
+  };
+
 
 
 /*
@@ -121,13 +147,16 @@ var sketch = function(p) {
     // fft = new p5.FFT();
     // sound.amp(0.2);
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
+    player = new PlayerManager();
 
     p.background(0);
   };
 
   p.draw = function() {
     if (sound.isPlaying()) {
+      p.background(0);
       waveManager.draw();
+      player.draw();
     }
   };
 

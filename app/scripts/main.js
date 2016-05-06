@@ -1,4 +1,4 @@
-let player = "hello", myp5; // to be populated on soundcloud connect success
+let audioPlayer = "hello", myp5; // to be populated on soundcloud connect success
 
 /*
 // Check for the various File API support.
@@ -102,7 +102,7 @@ let handleFileSelect = function(ev) {
   document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
 
   if (audioUrls.length > 0) {
-    player = new localAudioManager(audioUrls);
+    audioPlayer = new localAudioManager(audioUrls);
     myp5 = new p5(sketch);
   }
 };
@@ -150,7 +150,7 @@ dom.$connectSoundcloud.on("click", function() {
 
     // console.log(pl.tracks);
 
-    player = new SoundcloudManager(pl.tracks);
+    audioPlayer = new SoundcloudManager(pl.tracks);
     myp5 = new p5(sketch);
   });
 });
@@ -174,29 +174,24 @@ dom.$waveContainer.css({
 
 
 // Desktop
-/*
-let onKeypress = function(ev) {
-  console.log("upwards");
-  ev.preventDefault();
-  dom.$vessel.velocity("stop").velocity({translateY: "-200"}, {duration: 2500});
-}
+(function() {
+  console.log("has been run");
+  let onKeypress = function(ev) {
+    ev.preventDefault();
+    $(document).trigger("thrust");
+    console.log("thrust");
+  }
 
-$(document).one("keypress", function(ev) {
-  musicManager.toggle();
-  dom.$waveContainer.velocity({
-    translateX: `-${waveformWidth}`//`transformX(-${waveformManager.width}px)`
-  }, {
-    duration: audioDuration
-  });
-  onKeypress(ev);
-});
-
-$(document).on("keyup", ev => {
-  console.log("downwards");
   $(document).one("keypress", onKeypress);
-  dom.$vessel.velocity("stop").velocity({translateY: "200"}, {duration: 2500});
-});
-*/
+
+  $(document).on("keyup", ev => {
+    $(document).one("keypress", onKeypress);
+    $(document).trigger("gravity");
+    console.log("gravity");
+  });
+
+})();
+
 
 // Need a mobile on tap binding
 
