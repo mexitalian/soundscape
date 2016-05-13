@@ -3,7 +3,7 @@ var sketch = function(p) {
   let sound, fft;
   let fr = 60;
   let SPEED = 1;
-  let peaksPerScreen = 4;
+  let peaksPerScreen = 3;
   let peaksPerScreenBuffer = 2;
 
   let cnv; // canvas
@@ -23,12 +23,12 @@ var sketch = function(p) {
     // let screenCount = 0;
     let positionX = 0;
     let offsetX = 0;
-    let vertices = [];
+    let vertices;
 
     let updateOffsetX = function() {
       offsetX = Math.round( positionX % peakDistance );
       // offsetX = Math.round( (offsetX + frameDistance) % peakDistance );
-      console.log(offsetX);
+      // console.log(offsetX);
     };
 
     let updatePositionX = function() {
@@ -48,12 +48,15 @@ var sketch = function(p) {
       for (let i=0; i < peaksPerScreen+peaksPerScreenBuffer; i++) {
 
         let j = i + Math.floor(positionX/peakDistance);
-        // console.log(j);
-
+        let x = Math.floor(i * peakDistance);
+        let y = Math.round( p.map(peaks[j], -1, 1, p.height/8, p.height-(p.height/8)) );
+/*
         vertices.push([
           Math.floor(i * peakDistance),//Math.round((peakDistance/2) + (i * peakDistance)),
           Math.round( p.map(peaks[j], -1, 1, p.height/8, p.height-(p.height/8)) )
         ]);
+*/
+        vertices.push( p.createVector(x, y) );
       };
 
       // t::todo put this line in
@@ -78,16 +81,13 @@ var sketch = function(p) {
 
       // upper limit
       for (let v of vertices) {
-        let x = v[0] - offsetX,
-            y = v[1] - p.height/4;
-        p.vertex(x, y);
+        console.log(v);
+        p.vertex(v.x - offsetX, v.y - p.height/4);
       }
 
       // lower limit
       for (let v of vertices.reverse()) {
-        let x = v[0] - offsetX,
-            y = p.height/4 + v[1];
-        p.vertex(x, y);
+        p.vertex(v.x - offsetX, p.height/4 + v.y);
       }
 
       p.endShape();
@@ -128,6 +128,13 @@ var sketch = function(p) {
 
 
 
+
+var hit = false;
+var poly = [];
+
+
+
+
 /*
   -----------------------
   Processing Loop - start
@@ -140,7 +147,13 @@ var sketch = function(p) {
   };
 
   p.setup = function() {
-
+/*
+    p.collideDebug(true);
+    poly[0] = p.createVector(123,231);     // set X/Y position
+    poly[1] = p.createVector(10,111);
+    poly[2] = p.createVector(20,23);
+    poly[3] = p.createVector(390,33);
+*/
     p.frameRate(fr);
     cnv = p.createCanvas(p.windowWidth, 400);
     cnv.mouseClicked(togglePlay);
@@ -158,6 +171,23 @@ var sketch = function(p) {
       waveManager.draw();
       player.draw();
     }
+/*
+    //draw the polygon from the created Vectors above.
+    p.beginShape();
+    for(let i=0; i < poly.length; i++){
+        p.vertex(poly[i].x,poly[i].y);
+    }
+    p.endShape(p.CLOSE);
+
+
+
+    p.ellipse(p.mouseX,p.mouseY,45,45);
+
+    // hit = collideCirclePoly(mouseX,mouseY,45,poly,true);
+    hit = p.collideCirclePoly.apply(p, [p.mouseX,p.mouseY,45,poly]);
+    //enable the hit detection if the circle is wholly inside the polygon
+    print("colliding? " + hit);
+*/
   };
 
 /*
