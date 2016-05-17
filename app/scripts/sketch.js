@@ -81,7 +81,6 @@ var sketch = function(p) {
 
       // upper limit
       for (let v of vertices) {
-        console.log(v);
         p.vertex(v.x - offsetX, v.y - p.height/4);
       }
 
@@ -89,7 +88,6 @@ var sketch = function(p) {
       for (let v of vertices.reverse()) {
         p.vertex(v.x - offsetX, p.height/4 + v.y);
       }
-
       p.endShape();
     };
 
@@ -104,8 +102,7 @@ var sketch = function(p) {
     let thrust;
     let x = p.width / 2; // x is always the same, center of screen
     let y = p.height / 2; // begin at center
-    let w = 50;
-    let h = w;
+    let maxDiameter = 75;
     let hasThrust = false;
 
     $(document).on("thrust", function() {
@@ -117,16 +114,30 @@ var sketch = function(p) {
 
     let draw = function() {
 
-      y = hasThrust ? y-1 : y+1;
+      y = hasThrust ? y-2 : y+4;
+
+      fft.analyze();
+      let diameter = p.map(fft.getEnergy("bass"), 0, 255, 0, maxDiameter);
+      // let grayscale = Math.floor( fft.getEnergy("bass") );
 
       p.fill(255);
-      p.ellipse(x, y, w, h); // x, y, w, h
+      p.ellipse(x, y, diameter, diameter); // x, y, w, h
     }
 
     return {draw, thrust};
   };
 
+// time, begin/start value, change in value, duration
+Math.easeInQuart = function (t, b, c, d) {
+  t /= d;
+  return c*t*t*t*t + b;
 
+  // time is irrelevant
+  // [x] start value is the y co-ordinate
+  // change in value is the variable
+  // duration depends upon length of keypress
+  // 
+};
 
 
 var hit = false;
@@ -157,8 +168,8 @@ var poly = [];
     p.frameRate(fr);
     cnv = p.createCanvas(p.windowWidth, 400);
     cnv.mouseClicked(togglePlay);
-    // fft = new p5.FFT();
-    // sound.amp(0.2);
+    fft = new p5.FFT();
+    sound.amp(0.2);
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
 
