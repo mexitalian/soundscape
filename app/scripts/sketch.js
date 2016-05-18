@@ -7,7 +7,7 @@ var sketch = function(p) {
   let peaksPerScreenBuffer = 2;
 
   let cnv; // canvas
-  let waveManager, player;
+  let waveManager, player, wavy;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
@@ -127,6 +127,25 @@ var sketch = function(p) {
     return {draw, thrust};
   };
 
+  let Wavy = function() {
+    let draw = function() {
+      let waveform = fft.waveform();
+      p.noFill();
+      p.beginShape();
+      p.stroke(255,255,255); // waveform is red
+      p.strokeWeight(1);
+      console.log(`waveform: ${waveform.length}`);
+      for (var i = 0; i< waveform.length; i++){
+        var x = p.map(i, 0, waveform.length, 0, p.width);
+        var y = p.map( waveform[i], -1, 1, 0, p.height);
+        p.vertex(x,y);
+      }
+      p.endShape();
+    };
+
+    return { draw };
+  };
+
 // time, begin/start value, change in value, duration
 Math.easeInQuart = function (t, b, c, d) {
   t /= d;
@@ -172,6 +191,7 @@ var poly = [];
     sound.amp(0.2);
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
+    wavy = new Wavy();
 
     p.background(0);
   };
@@ -181,6 +201,7 @@ var poly = [];
       p.background(0);
       waveManager.draw();
       player.draw();
+      wavy.draw();
     }
 /*
     //draw the polygon from the created Vectors above.
