@@ -148,33 +148,14 @@ var sketch = function(p) {
     return { draw };
   };
 
-  let CircularWaveform = function() {
+  let CircularWaveform = function(posX = p.width/2, posY = p.height/2, multiplier = 300) {
 
-    let radius = 200; // px
+    let radius = 100; // px
     // we shall begin by doing a quarter circle
-    let segQuantity = 256; // 1024/4
-    let degree = 90/segQuantity;
-    // let xArray = new Array(segQuantity);
-    // let yArray = new Array(segQuantity);
-    /*
-    for (let i=0; i<segQuantity; i++) {
-      if (i==0)
-      {
-        xArray[i] = 0;
-        yArray[i] = radius;
-      }
-      else if (i==segQuantity-1)
-      {
-        xArray[i] = radius;
-        yArray[i] = 0;
-      }
-      else
-      {
-        xArray[i] = Math.sin( Math.radians(i) ) * radius;
-        yArray[i] = Math.cos( Math.radians(i) ) * radius;
-      }
-    }
-    */
+    let waveformLength = 1024; // Note: hard coded, beware
+    let degree = 360/waveformLength;
+    let radian = Math.radians(degree); // the increment around the circle in radians
+
     let draw = function() {
 
       let waveform = fft.waveform(), x, y;
@@ -184,30 +165,45 @@ var sketch = function(p) {
       p.stroke(255,255,255); // waveform is white
       p.strokeWeight(1);
 
-      for (let i=0; i<segQuantity; i++) {
-        if (i==0)
-        {
-          x = 0;
-          y = radius + radius * waveform[i];
+      for (let i=0; i<waveformLength; i++) {
+        switch (i*degree) {
+          case 0:
+            x = 0;
+            y = radius + multiplier * waveform[i];
+            break;
+
+          case 90:
+            x = radius + multiplier * waveform[i];
+            y = 0;
+            break;
+
+          case 180:
+            x = 0;
+            y = -1 * (radius + multiplier * waveform[i]);
+            break;
+
+          case 270:
+            x = -1 * (radius - multiplier * waveform[i]);
+            y = 0;
+            break;
+
+          default:
+            x = Math.sin(radian*i) * (radius + multiplier * waveform[i]);
+            y = Math.cos(radian*i) * (radius + multiplier * waveform[i]);
         }
-        else if (i==segQuantity-1)
-        {
-          x = radius + radius * waveform[i];
-          y = 0;
-        }
-        else
-        {
-          x = Math.sin( Math.radians(i) ) * (radius + radius * waveform[i]);
-          y = Math.cos( Math.radians(i) ) * (radius + radius * waveform[i]);
-        }
+
+        // put the waveform in the center
+        x += posX;
+        y += posY;
+
         p.vertex(x,y);
       }
       p.endShape();
     }
-
     return {draw};
   };
 
+// not beging used thus far
 // time, begin/start value, change in value, duration
 Math.easeInQuart = function (t, b, c, d) {
   t /= d;
@@ -217,7 +213,6 @@ Math.easeInQuart = function (t, b, c, d) {
   // [x] start value is the y co-ordinate
   // change in value is the variable
   // duration depends upon length of keypress
-  // 
 };
 
 
