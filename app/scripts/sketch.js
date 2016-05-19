@@ -7,7 +7,7 @@ var sketch = function(p) {
   let peaksPerScreenBuffer = 2;
 
   let cnv; // canvas
-  let waveManager, player, wavy;
+  let waveManager, player, wavy, circleWave;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
@@ -134,7 +134,9 @@ var sketch = function(p) {
       p.beginShape();
       p.stroke(255,255,255); // waveform is red
       p.strokeWeight(1);
-      console.log(`waveform: ${waveform.length}`);
+
+      // console.log(`waveform: ${waveform.length}`);
+
       for (var i = 0; i< waveform.length; i++){
         var x = p.map(i, 0, waveform.length, 0, p.width);
         var y = p.map( waveform[i], -1, 1, 0, p.height);
@@ -144,6 +146,66 @@ var sketch = function(p) {
     };
 
     return { draw };
+  };
+
+  let CircularWaveform = function() {
+
+    let radius = 200; // px
+    // we shall begin by doing a quarter circle
+    let segQuantity = 256; // 1024/4
+    let degree = 90/segQuantity;
+    // let xArray = new Array(segQuantity);
+    // let yArray = new Array(segQuantity);
+    /*
+    for (let i=0; i<segQuantity; i++) {
+      if (i==0)
+      {
+        xArray[i] = 0;
+        yArray[i] = radius;
+      }
+      else if (i==segQuantity-1)
+      {
+        xArray[i] = radius;
+        yArray[i] = 0;
+      }
+      else
+      {
+        xArray[i] = Math.sin( Math.radians(i) ) * radius;
+        yArray[i] = Math.cos( Math.radians(i) ) * radius;
+      }
+    }
+    */
+    let draw = function() {
+
+      let waveform = fft.waveform(), x, y;
+
+      p.noFill();
+      p.beginShape();
+      p.stroke(255,255,255); // waveform is white
+      p.strokeWeight(1);
+
+      for (let i=0; i<segQuantity; i++) {
+        if (i==0)
+        {
+          x = 0;
+          y = radius + radius * waveform[i];
+        }
+        else if (i==segQuantity-1)
+        {
+          x = radius + radius * waveform[i];
+          y = 0;
+        }
+        else
+        {
+          x = Math.sin( Math.radians(i) ) * (radius + radius * waveform[i]);
+          y = Math.cos( Math.radians(i) ) * (radius + radius * waveform[i]);
+        }
+        p.vertex(x,y);
+      }
+      p.endShape();
+    }
+
+    return {draw};
   };
 
 // time, begin/start value, change in value, duration
@@ -192,6 +254,7 @@ var poly = [];
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
     wavy = new Wavy();
+    circleWave = new CircularWaveform();
 
     p.background(0);
   };
@@ -202,6 +265,7 @@ var poly = [];
       waveManager.draw();
       player.draw();
       wavy.draw();
+      circleWave.draw();
     }
 /*
     //draw the polygon from the created Vectors above.
