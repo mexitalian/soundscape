@@ -99,7 +99,6 @@ var sketch = function(p) {
 
   let PlayerManager = function() {
 
-    let thrust;
     let x = p.width / 2; // x is always the same, center of screen
     let y = p.height / 2; // begin at center
     let maxDiameter = 75;
@@ -112,19 +111,30 @@ var sketch = function(p) {
       hasThrust = false;
     });
 
+    let getY = function() {
+      return y;
+    };
+
     let draw = function() {
 
-      y = hasThrust ? y-2 : y+4;
+      if (y<p.height && y>0) {
+        y = hasThrust ? y-2 : y+4;
+      }
+      else if (y==p.height && hasThrust) {
+        y -= 2;
+      }
+      else if (y==0 && !hasThrust) {
+        y += 4;
+      }
 
       fft.analyze();
       let diameter = p.map(fft.getEnergy("bass"), 0, 255, 0, maxDiameter);
       // let grayscale = Math.floor( fft.getEnergy("bass") );
-
       p.fill(255);
       p.ellipse(x, y, diameter, diameter); // x, y, w, h
     }
 
-    return {draw, thrust};
+    return {draw, getY};
   };
 
   let Wavy = function() {
@@ -150,7 +160,7 @@ var sketch = function(p) {
 
   let CircularWaveform = function(posX = p.width/2, posY = p.height/2, multiplier = 300) {
 
-    let radius = 100; // px
+    let radius = 50; // px
     // we shall begin by doing a quarter circle
     let waveformLength = 1024; // Note: hard coded, beware
     let degree = 360/waveformLength;
@@ -168,6 +178,7 @@ var sketch = function(p) {
       for (let i=0; i<waveformLength; i++) {
         switch (i*degree) {
           case 0:
+          // case 360:
             x = 0;
             y = radius + multiplier * waveform[i];
             break;
@@ -183,7 +194,7 @@ var sketch = function(p) {
             break;
 
           case 270:
-            x = -1 * (radius - multiplier * waveform[i]);
+            x = -1 * (radius + multiplier * waveform[i]);
             y = 0;
             break;
 
@@ -194,7 +205,7 @@ var sketch = function(p) {
 
         // put the waveform in the center
         x += posX;
-        y += posY;
+        y += (typeof posY === "function") ? posY() : posY;
 
         p.vertex(x,y);
       }
@@ -249,7 +260,7 @@ var poly = [];
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
     wavy = new Wavy();
-    circleWave = new CircularWaveform();
+    circleWave = new CircularWaveform(p.width/2, player.getY);
 
     p.background(0);
   };
@@ -259,7 +270,7 @@ var poly = [];
       p.background(0);
       waveManager.draw();
       player.draw();
-      wavy.draw();
+      // wavy.draw();
       circleWave.draw();
     }
 /*
