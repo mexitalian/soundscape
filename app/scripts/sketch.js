@@ -5,9 +5,10 @@ var sketch = function(p) {
   let SPEED = 1;
   let peaksPerScreen = 3;
   let peaksPerScreenBuffer = 2;
+  let bins = 256;
 
   let cnv; // canvas
-  let waveManager, player, wavy, circleWave;
+  let waveManager, player, wavy, circleWave, particles;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
@@ -120,10 +121,10 @@ var sketch = function(p) {
       if (y<p.height && y>0) {
         y = hasThrust ? y-2 : y+4;
       }
-      else if (y==p.height && hasThrust) {
+      else if (y>=p.height && hasThrust) {
         y -= 2;
       }
-      else if (y==0 && !hasThrust) {
+      else if (y<=0 && !hasThrust) {
         y += 4;
       }
 
@@ -162,55 +163,124 @@ var sketch = function(p) {
 
     let radius = 50; // px
     // we shall begin by doing a quarter circle
-    let waveformLength = 1024; // Note: hard coded, beware
-    let degree = 360/waveformLength;
+    let degree = 360/bins;
     let radian = Math.radians(degree); // the increment around the circle in radians
+    let vectors;
 
+    let prevVectorsLength = 5; // 60 frames of old vectors = 1 second
+    let prevVectorsIsFull = false;
+    let prevVectors = new Array();
+
+    let frameRange = 1;
+
+    $(document).on("up", function() {
+      if (frameRange == fr)
+        return;
+      frameRange++;
+    });
+
+    $(document).on("down", function() {
+      if (frameRange === 1)
+        return;
+      frameRange--;
+    });
+/*
+    let getPrevVectors = function() {
+      return prevVectors; // necessary??? ::Todo:: Check
+    };
+*/
     let draw = function() {
 
       let waveform = fft.waveform(), x, y;
+      vectors = [];
 
       p.noFill();
       p.beginShape();
       p.stroke(255,255,255); // waveform is white
       p.strokeWeight(1);
 
-      for (let i=0; i<waveformLength; i++) {
-        switch (i*degree) {
-          case 0:
-          // case 360:
-            x = 0;
-            y = radius + multiplier * waveform[i];
-            break;
+      for (let i=0; i<bins; i++) {
 
-          case 90:
-            x = radius + multiplier * waveform[i];
-            y = 0;
-            break;
+        // if (i%2!==0 && i%3!==0) {
 
-          case 180:
-            x = 0;
-            y = -1 * (radius + multiplier * waveform[i]);
-            break;
+          switch (i*degree) {
+            case 0:
+            // case 360:
+              x = 0;
+              y = radius + multiplier * waveform[i];
+              break;
 
-          case 270:
-            x = -1 * (radius + multiplier * waveform[i]);
-            y = 0;
-            break;
+            case 90:
+              x = radius + multiplier * waveform[i];
+              y = 0;
+              break;
 
-          default:
-            x = Math.sin(radian*i) * (radius + multiplier * waveform[i]);
-            y = Math.cos(radian*i) * (radius + multiplier * waveform[i]);
-        }
+            case 180:
+              x = 0;
+              y = -1 * (radius + multiplier * waveform[i]);
+              break;
+
+            case 270:
+              x = -1 * (radius + multiplier * waveform[i]);
+              y = 0;
+              break;
+
+            default:
+              x = Math.sin(radian*i) * (radius + multiplier * waveform[i]);
+              y = Math.cos(radian*i) * (radius + multiplier * waveform[i]);
+          }
 
         // put the waveform in the center
-        x += posX;
-        y += (typeof posY === "function") ? posY() : posY;
+        x = x + posX;
+        y = (typeof posY === "function") ? y + posY() : y + posY;
 
-        p.vertex(x,y);
-      }
+        p.vertex(x, y);
+
+        // console.log(radian*i);
+        // console.log(vector.heading());
+
+        vectors.push(p.createVector(x, y));
+        }
+
+      // }
+
       p.endShape();
+
+      if (p.frameCount % frameRange === 0)
+      {
+        if (!prevVectorsIsFull) {
+          prevVectorsIsFull = prevVectors.length == prevVectorsLength;
+        }
+        else {
+          prevVectors.pop();
+        }
+        prevVectors.unshift(vectors);
+      }
+
     }
+    return {draw, prevVectors};
+  };
+
+  let VectorParticles = function(circleWave) {
+
+    let draw = function() {
+
+      let opacity = 90;
+      let weight = 1;
+
+      for (let vectors of circleWave.prevVectors) {
+
+        p.stroke(255, opacity);
+        p.strokeWeight(weight);
+
+        for (let vector of vectors) {
+          p.point(vector.x, vector.y);
+        }
+
+        opacity = opacity - 20;
+        weight = weight + 1;
+      }
+    };
     return {draw};
   };
 
@@ -255,12 +325,13 @@ var poly = [];
     p.frameRate(fr);
     cnv = p.createCanvas(p.windowWidth, 400);
     cnv.mouseClicked(togglePlay);
-    fft = new p5.FFT();
+    fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
     sound.amp(0.2);
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
-    wavy = new Wavy();
+    // wavy = new Wavy();
     circleWave = new CircularWaveform(p.width/2, player.getY);
+    particles = new VectorParticles(circleWave);
 
     p.background(0);
   };
@@ -272,6 +343,7 @@ var poly = [];
       player.draw();
       // wavy.draw();
       circleWave.draw();
+      particles.draw();
     }
 /*
     //draw the polygon from the created Vectors above.

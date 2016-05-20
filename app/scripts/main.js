@@ -190,6 +190,24 @@ dom.$waveContainer.css({
     console.log("gravity");
   });
 
+  $(document).on("keydown", ev => {
+    let left = 37
+      , up = 38
+      , right = 39
+      , down = 40;
+
+    switch(ev.keyCode) {
+      case up:
+        $(document).trigger("up");
+        console.log("up");
+           break;
+      case down:  $(document).trigger("down");   break;
+      case left:  $(document).trigger("left");   break;
+      case right: $(document).trigger("right");  break;
+    }
+
+  });
+
 })();
 
 
