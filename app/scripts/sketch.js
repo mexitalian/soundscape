@@ -8,7 +8,7 @@ var sketch = function(p) {
   let bins = 256;
 
   let cnv; // canvas
-  let waveManager, player, wavy, circleWave, particles;
+  let waveManager, player, wavy, circleWave, particles, satellite;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
@@ -98,6 +98,70 @@ var sketch = function(p) {
     // }
   };
 
+  let Satellite = function(planet) {
+
+    // fuck you internal critic, I'll be a baillerina
+    let degree = 360/fr;
+    let radian = Math.radians(degree); // the increment around the circle in radians
+    let diameter = 40;
+    let distanceFromPlanet = 30;
+    let x, y;
+    // how do I move something move around a circle
+
+    let getDiameter = function() {
+      return p.map(fft.getEnergy("bass"), 0, 255, 0, diameter);
+    };
+
+    let getCoords = function() {
+      //  give me back the progression around the circle every frame
+      let i = p.frameCount % fr;
+      let hypotenuse = planet.radius + p.map(fft.getEnergy("bass"), 0, 255, distanceFromPlanet, distanceFromPlanet*4);
+
+      switch (i*degree) {
+        case 0:
+        // case 360:
+          x = 0;
+          y = hypotenuse;
+          break;
+
+        case 90:
+          x = hypotenuse;
+          y = 0;
+          break;
+
+        case 180:
+          x = 0;
+          y = -1 * hypotenuse;
+          break;
+
+        case 270:
+          x = -1 * hypotenuse;
+          y = 0;
+          break;
+
+        default:
+          x = Math.sin(radian*i) * hypotenuse;
+          y = Math.cos(radian*i) * hypotenuse;
+      }
+      x = x + planet.centerX;
+      y = y + planet.centerY;
+
+      return {x, y};
+    };
+
+    let draw = function() {
+
+      fft.analyze();
+
+      let coords = getCoords();
+      let diameter = getDiameter();
+      p.fill(255);
+      p.ellipse(coords.x, coords.y, diameter, diameter);
+    };
+
+    return {draw};
+  };
+
   let PlayerManager = function() {
 
     let x = p.width / 2; // x is always the same, center of screen
@@ -159,7 +223,7 @@ var sketch = function(p) {
     return { draw };
   };
 
-  let CircularWaveform = function(posX = p.width/2, posY = p.height/2, multiplier = 300) {
+  let CircularWaveform = function(centerX = p.width/2, centerY = p.height/2, multiplier = 300) {
 
     let radius = 50; // px
     // we shall begin by doing a quarter circle
@@ -194,7 +258,7 @@ var sketch = function(p) {
       let waveform = fft.waveform(), x, y;
       vectors = [];
 
-      p.noFill();
+      p.fill(255);
       p.beginShape();
       p.stroke(255,255,255); // waveform is white
       p.strokeWeight(1);
@@ -203,36 +267,38 @@ var sketch = function(p) {
 
         // if (i%2!==0 && i%3!==0) {
 
+          let hypotenuse = radius + multiplier * waveform[i];
+
           switch (i*degree) {
             case 0:
             // case 360:
               x = 0;
-              y = radius + multiplier * waveform[i];
+              y = hypotenuse;
               break;
 
             case 90:
-              x = radius + multiplier * waveform[i];
+              x = hypotenuse;
               y = 0;
               break;
 
             case 180:
               x = 0;
-              y = -1 * (radius + multiplier * waveform[i]);
+              y = -1 * hypotenuse;
               break;
 
             case 270:
-              x = -1 * (radius + multiplier * waveform[i]);
+              x = -1 * hypotenuse;
               y = 0;
               break;
 
             default:
-              x = Math.sin(radian*i) * (radius + multiplier * waveform[i]);
-              y = Math.cos(radian*i) * (radius + multiplier * waveform[i]);
+              x = Math.sin(radian*i) * hypotenuse;
+              y = Math.cos(radian*i) * hypotenuse;
           }
 
         // put the waveform in the center
-        x = x + posX;
-        y = (typeof posY === "function") ? y + posY() : y + posY;
+        x = x + centerX;
+        y = (typeof centerY === "function") ? y + centerY() : y + centerY;
 
         p.vertex(x, y);
 
@@ -258,7 +324,7 @@ var sketch = function(p) {
       }
 
     }
-    return {draw, prevVectors};
+    return {draw, prevVectors, radius, centerX, centerY};
   };
 
   let VectorParticles = function(circleWave) {
@@ -330,8 +396,9 @@ var poly = [];
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
     // wavy = new Wavy();
-    circleWave = new CircularWaveform(p.width/2, player.getY);
+    circleWave = new CircularWaveform(/*p.width/2, player.getY*/);
     particles = new VectorParticles(circleWave);
+    satellite = new Satellite(circleWave);
 
     p.background(0);
   };
@@ -344,6 +411,7 @@ var poly = [];
       // wavy.draw();
       circleWave.draw();
       particles.draw();
+      satellite.draw();
     }
 /*
     //draw the polygon from the created Vectors above.
