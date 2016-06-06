@@ -9,6 +9,20 @@ var sketch = function(p) {
   let sound, fft, cnv, waveManager, player, wavy, circleWave, particles, satellites = {}, audioProperties;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
+  let center = {};
+  let themes = {
+    active: undefined, // to be assigned the active theme values
+    soviet: {
+      bg: [0,0,0],
+      wall: [255,0,0]
+    },
+    classic: {
+      bg: [0], // blick
+      wall: [102,255,102] // green
+    }
+  };
+  themes.active = themes.classic;
+
   /*
     Get the FFT spectrum, energies, waveform into a central location
     ----------------------------------------------------------------
@@ -34,17 +48,20 @@ var sketch = function(p) {
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
 
     let waveWidth = Math.floor(sound.duration() * p.width);
-    // We will draw 4 peaks (8 vertices) to screen at any one moment
-    // with 2 peaks (4 verticies) off screen
-    // start with 4 always on screen – static
     let peakDistance = p.width / peaksPerScreen;
     let frameDistance = p.width / fr;
     let peakResolution = sound.duration() * 4; // t::todo needs to account for parts of a second
     let peaks = sound.getPeaks(peakResolution); // waveform for full audio <- add resolution here
-    // let screenCount = 0;
+
     let positionX = 0;
     let offsetX = 0;
     let vertices;
+
+    this.onOrientationChange = function() {
+      waveWidth = Math.floor(sound.duration() * p.width);
+      peakDistance = p.width / peaksPerScreen;
+      frameDistance = p.width / fr;
+    };
 
     let updateOffsetX = function() {
       offsetX = Math.round( positionX % peakDistance );
@@ -96,8 +113,8 @@ var sketch = function(p) {
       updateVars();
 
       p.beginShape();
-      p.fill(255,0,0);
-      p.stroke(255,0,0);
+      p.fill(themes.active.bg);
+      p.stroke(themes.active.bg);
       p.strokeWeight(1);
 
       // upper limit
@@ -180,8 +197,7 @@ var sketch = function(p) {
 
   let PlayerManager = function() {
 
-    let x = p.width / 2; // x is always the same, center of screen
-    let y = p.height / 2; // begin at center
+    let y = center.y; // begin at center
     let maxDiameter = 75;
     let hasThrust = false;
 
@@ -199,20 +215,25 @@ var sketch = function(p) {
     let draw = function() {
 
       if (y<p.height && y>0) {
-        y = hasThrust ? y-2 : y+4;
+        y = p.mouseIsPressed ? y-2 : y+4;
       }
-      else if (y>=p.height && hasThrust) {
+      else if (y==p.height && p.mouseIsPressed) {
         y -= 2;
       }
-      else if (y<=0 && !hasThrust) {
+      else if (y==0 && !p.mouseIsPressed) {
         y += 4;
       }
+      else if (y>p.height) {
+        y = p.height;
+      }
+      else if (y<0) {
+        y = 0;
+      }
 
-      fft.analyze();
-      let diameter = p.map(fft.getEnergy("bass"), 0, 255, 0, maxDiameter);
-      // let grayscale = Math.floor( fft.getEnergy("bass") );
+      let diameter = p.map(audioProperties.energy.bass, 0, 255, 0, maxDiameter);
+
       p.fill(255);
-      p.ellipse(x, y, diameter, diameter); // x, y, w, h
+      p.ellipse(center.x, y, diameter, diameter);
     }
 
     return {draw, getY};
@@ -239,9 +260,12 @@ var sketch = function(p) {
     return { draw };
   };
 
-  let CircularWaveform = function(centerX = p.width/2, centerY = p.height/2, multiplier = 300) {
 
-    let radius = 50; // px
+
+  let CircularWaveform = function(multiplier = 300) {
+
+    let self = this;
+    let radius = this.radius = 50; // px
     // we shall begin by doing a quarter circle
     let degree = 360/bins;
     let radian = Math.radians(degree); // the increment around the circle in radians
@@ -249,8 +273,7 @@ var sketch = function(p) {
 
     let prevVectorsLength = 5; // 60 frames of old vectors = 1 second
     let prevVectorsIsFull = false;
-    let prevVectors = new Array();
-
+    let prevVectors = this.prevVectors = new Array();
     let frameRange = 1;
 
     $(document).on("up", function() {
@@ -269,9 +292,9 @@ var sketch = function(p) {
       return prevVectors; // necessary??? ::Todo:: Check
     };
 */
-    let draw = function() {
+    this.draw = function() {
 
-      let waveform = fft.waveform(), x, y;
+      let waveform = audioProperties.waveform, x, y;
       vectors = [];
 
       p.fill(255);
@@ -312,8 +335,8 @@ var sketch = function(p) {
               y = Math.cos(radian*i) * hypotenuse;
           }
 
-        x = x + centerX;
-        y = (typeof centerY === "function") ? y + centerY() : y + centerY;
+        x = x + center.x;
+        y = (typeof centerY === "function") ? y + centerY() : y + center.y;
 
         p.vertex(x, y);
 
@@ -333,8 +356,11 @@ var sketch = function(p) {
         prevVectors.unshift(vectors);
       }
 
-    }
-    return {draw, prevVectors, radius, x: centerX, y:centerY};
+      self.x = center.x;
+      self.y = center.y;
+
+    };
+
   };
 
   let VectorParticles = function(circleWave) {
@@ -399,27 +425,33 @@ var poly = [];
     poly[3] = p.createVector(390,33);
 */
     p.frameRate(fr);
-    cnv = p.createCanvas(p.windowWidth, 400);
-    cnv.mouseClicked(togglePlay);
+    cnv = p.createCanvas(p.windowWidth, p.windowHeight);
+
+    // cnv.mouseClicked(togglePlay);
+
     fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
     sound.amp(0.2);
+    center.x = p.width / 2;
+    center.y = p.height / 2;
 
     audioProperties = new AudioProperties();
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
     // wavy = new Wavy();
-    circleWave = new CircularWaveform(/*p.width/2, player.getY*/);
+    circleWave = new CircularWaveform();
     particles = new VectorParticles(circleWave);
     satellites.bass = new Satellite(circleWave, "bass");
     // satellites.mid = new Satellite(circleWave, "treble");
     satellites.treble = new Satellite(satellites.bass, "treble");
 
     p.background(0);
+    togglePlay();
+
   };
 
   p.draw = function() {
     if (sound.isPlaying()) {
-      p.background(0);
+      p.background(themes.active.wall);
       audioProperties.update();
       waveManager.draw();
       player.draw();
@@ -429,6 +461,8 @@ var poly = [];
       satellites.bass.draw();
       satellites.treble.draw();
     }
+
+
 /*
     //draw the polygon from the created Vectors above.
     p.beginShape();
@@ -448,6 +482,17 @@ var poly = [];
 */
   };
 
+  p.windowResized = function() {
+    p.resizeCanvas(p.windowWidth, p.windowHeight);
+    center.x = p.width / 2;
+    center.y = p.height / 2;
+  };
+
+  p.keyPressed = function(ev) {
+    if (p.keyCode === p.ESCAPE) {
+      togglePlay();
+    }
+  };
 /*
   -----------------------
   Processing Loop -  end

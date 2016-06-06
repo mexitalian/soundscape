@@ -152,6 +152,9 @@ dom.$playbackBtn.on("click", function() {
   });
 });
 */
+
+
+/*
 dom.$connectSoundcloud.on("click", function() {
 
   SC.connect().then(function(){
@@ -165,6 +168,7 @@ dom.$connectSoundcloud.on("click", function() {
   });
 });
 
+*/
 
 /*
 dom.$getLocalFile.on("click", function() {
@@ -185,17 +189,16 @@ dom.$waveContainer.css({
 
 // Desktop
 (function() {
-  console.log("has been run");
-  let onKeypress = function(ev) {
+
+  let onMouseClick = function(ev) {
     ev.preventDefault();
     $(document).trigger("thrust");
     console.log("thrust");
   }
 
-  $(document).one("keypress", onKeypress);
-
-  $(document).on("keyup", ev => {
-    $(document).one("keypress", onKeypress);
+  $(document).one("mousedown", onMouseClick);
+  $(document).on("mouseup", ev => {
+    $(document).one("mousedown", onMouseClick);
     $(document).trigger("gravity");
     console.log("gravity");
   });
