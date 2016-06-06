@@ -55,6 +55,7 @@ var sketch = function(p) {
 
     let positionX = 0;
     let offsetX = 0;
+    let maxOffsetY = 30;
     let vertices;
 
     this.onOrientationChange = function() {
@@ -117,14 +118,19 @@ var sketch = function(p) {
       p.stroke(themes.active.bg);
       p.strokeWeight(1);
 
+      let yOffset = p.map(audioProperties.energy.bass, 0, 255, 0, maxOffsetY) + p.height/4;
+      // let yOffset = p.height/4;
+
       // upper limit
       for (let v of vertices) {
-        p.vertex(v.x - offsetX, v.y - p.height/4);
+        // p.vertex(v.x - offsetX, v.y - p.height/4); // old values, static y
+        p.vertex(v.x - offsetX, v.y - yOffset);
       }
 
       // lower limit
       for (let v of vertices.reverse()) {
-        p.vertex(v.x - offsetX, p.height/4 + v.y);
+        // p.vertex(v.x - offsetX, p.height/4 + v.y); // same reason as above
+        p.vertex(v.x - offsetX, yOffset + v.y);
       }
       p.endShape();
     };
@@ -435,14 +441,14 @@ var poly = [];
     center.y = p.height / 2;
 
     audioProperties = new AudioProperties();
+
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
-    // wavy = new Wavy();
-    circleWave = new CircularWaveform();
-    particles = new VectorParticles(circleWave);
-    satellites.bass = new Satellite(circleWave, "bass");
+
+    // particles = new VectorParticles(circleWave);
+    // satellites.bass = new Satellite(circleWave, "bass");
     // satellites.mid = new Satellite(circleWave, "treble");
-    satellites.treble = new Satellite(satellites.bass, "treble");
+    // satellites.treble = new Satellite(satellites.bass, "treble");
 
     p.background(0);
     togglePlay();
@@ -453,13 +459,9 @@ var poly = [];
     if (sound.isPlaying()) {
       p.background(themes.active.wall);
       audioProperties.update();
+
       waveManager.draw();
       player.draw();
-      // wavy.draw();
-      circleWave.draw();
-      particles.draw();
-      satellites.bass.draw();
-      satellites.treble.draw();
     }
 
 
