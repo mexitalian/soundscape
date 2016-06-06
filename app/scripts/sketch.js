@@ -1,15 +1,35 @@
 var sketch = function(p) {
 
-  let sound, fft;
   let fr = 60;
   let SPEED = 1;
   let peaksPerScreen = 3;
   let peaksPerScreenBuffer = 2;
   let bins = 256;
 
-  let cnv; // canvas
-  let waveManager, player, wavy, circleWave, particles, satellite;
+  let sound, fft, cnv, waveManager, player, wavy, circleWave, particles, satellites = {}, audioProperties;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
+
+  /*
+    Get the FFT spectrum, energies, waveform into a central location
+    ----------------------------------------------------------------
+  */
+  let AudioProperties = function() {
+
+    this.energy;
+    this.waveform;
+    this.update = function() {
+
+        fft.analyze();
+        this.energy = {
+          bass: fft.getEnergy("bass"),
+          mid: fft.getEnergy("mid"),
+          treble: fft.getEnergy("treble")
+        };
+        this.waveform = fft.waveform();
+    };
+
+    this.update();
+  };
 
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
 
@@ -98,24 +118,27 @@ var sketch = function(p) {
     // }
   };
 
-  let Satellite = function(planet) {
+  let Satellite = function(planet, frequency = "bass", diameter = 40, maxOrbitDistance = 120, fftValues = audioProperties) {
 
     // fuck you internal critic, I'll be a baillerina
-    let degree = 360/fr;
+    let degree = 360/fr/(frequency === "bass" ? 2 : 1);
     let radian = Math.radians(degree); // the increment around the circle in radians
-    let diameter = 40;
-    let distanceFromPlanet = 30;
-    let x, y;
-    // how do I move something move around a circle
+    let x = this.x;
+    let y = this.y;
+    let newDiameter;
+    let self = this;
 
-    let getDiameter = function() {
-      return p.map(fft.getEnergy("bass"), 0, 255, 0, diameter);
+    this.radius;
+
+    let updateDiameter = function() {
+      newDiameter = p.map(fftValues.energy[frequency], 0, 255, 0, diameter);
+      self.radius = newDiameter/2;
     };
 
-    let getCoords = function() {
+    let updateCoords = function() {
       //  give me back the progression around the circle every frame
-      let i = p.frameCount % fr;
-      let hypotenuse = planet.radius + p.map(fft.getEnergy("bass"), 0, 255, distanceFromPlanet, distanceFromPlanet*4);
+      let i = p.frameCount % (fr*(frequency === "bass" ? 2 : 1));
+      let hypotenuse = planet.radius + p.map(fftValues.energy[frequency], 0, 255, diameter, maxOrbitDistance);
 
       switch (i*degree) {
         case 0:
@@ -143,23 +166,16 @@ var sketch = function(p) {
           x = Math.sin(radian*i) * hypotenuse;
           y = Math.cos(radian*i) * hypotenuse;
       }
-      x = x + planet.centerX;
-      y = y + planet.centerY;
-
-      return {x, y};
+      self.x = x = x + planet.x;
+      self.y = y = y + planet.y;
     };
 
-    let draw = function() {
-
-      fft.analyze();
-
-      let coords = getCoords();
-      let diameter = getDiameter();
+    this.draw = function() {
+      updateCoords();
+      updateDiameter();
       p.fill(255);
-      p.ellipse(coords.x, coords.y, diameter, diameter);
+      p.ellipse(x, y, newDiameter, newDiameter);
     };
-
-    return {draw};
   };
 
   let PlayerManager = function() {
@@ -296,19 +312,13 @@ var sketch = function(p) {
               y = Math.cos(radian*i) * hypotenuse;
           }
 
-        // put the waveform in the center
         x = x + centerX;
         y = (typeof centerY === "function") ? y + centerY() : y + centerY;
 
         p.vertex(x, y);
 
-        // console.log(radian*i);
-        // console.log(vector.heading());
-
         vectors.push(p.createVector(x, y));
-        }
-
-      // }
+      }
 
       p.endShape();
 
@@ -324,7 +334,7 @@ var sketch = function(p) {
       }
 
     }
-    return {draw, prevVectors, radius, centerX, centerY};
+    return {draw, prevVectors, radius, x: centerX, y:centerY};
   };
 
   let VectorParticles = function(circleWave) {
@@ -393,12 +403,16 @@ var poly = [];
     cnv.mouseClicked(togglePlay);
     fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
     sound.amp(0.2);
+
+    audioProperties = new AudioProperties();
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
     // wavy = new Wavy();
     circleWave = new CircularWaveform(/*p.width/2, player.getY*/);
     particles = new VectorParticles(circleWave);
-    satellite = new Satellite(circleWave);
+    satellites.bass = new Satellite(circleWave, "bass");
+    // satellites.mid = new Satellite(circleWave, "treble");
+    satellites.treble = new Satellite(satellites.bass, "treble");
 
     p.background(0);
   };
@@ -406,12 +420,14 @@ var poly = [];
   p.draw = function() {
     if (sound.isPlaying()) {
       p.background(0);
+      audioProperties.update();
       waveManager.draw();
       player.draw();
       // wavy.draw();
       circleWave.draw();
       particles.draw();
-      satellite.draw();
+      satellites.bass.draw();
+      satellites.treble.draw();
     }
 /*
     //draw the polygon from the created Vectors above.
