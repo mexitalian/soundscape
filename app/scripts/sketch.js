@@ -6,7 +6,7 @@ var sketch = function(p) {
   let peaksPerScreenBuffer = 2;
   let bins = 256;
 
-  let sound, fft, cnv, waveManager, player, wavy, circleWave, particles, satellites = {}, audioProperties;
+  let sound, fft, cnv, waveManager, player, wavy, circleWave, particles, satellites = {}, audioProperties, uiControls, drawQueue;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let center = {};
@@ -43,6 +43,44 @@ var sketch = function(p) {
     };
 
     this.update();
+  };
+
+  let UIControls = function() {
+    // sound is contructed before this instance is created
+    let duration = sound.duration()
+      , line = {
+          length: p.width/2,
+          x1: p.width*.25,
+          x2: p.width*.75,
+          y: p.height - 30
+      }
+      , ph = { // playhead
+          width: 12,
+          height: 12,
+          x: line.x1,
+          y: line.y,
+          xIncr: line.length / duration,
+          updateX: function() {
+            // only update once every 250 ms
+            // can be taken out to improve smoothness, is an effort at killing overhead
+            if (p.frameCount % (fr/4) !== 0) {
+              return;
+            }
+            console.log(sound.currentTime());
+            this.x = line.x1 + this.xIncr * sound.currentTime();
+          }
+      };
+
+    this.draw = function() {
+      ph.updateX();
+
+      p.strokeWeight(2);
+      p.stroke(0);
+      p.line(line.x1, line.y, line.x2, line.y);
+      p.noStroke();
+      p.fill(255);
+      p.ellipse(ph.x, ph.y, ph.width, ph.height);
+    }
   };
 
   let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
@@ -238,12 +276,15 @@ var sketch = function(p) {
 
       let diameter = p.map(audioProperties.energy.bass, 0, 255, 0, maxDiameter);
 
+      p.noStroke();
       p.fill(255);
       p.ellipse(center.x, y, diameter, diameter);
     }
 
     return {draw, getY};
   };
+
+
 
   let Wavy = function() {
     let draw = function() {
@@ -423,6 +464,7 @@ var poly = [];
   };
 
   p.setup = function() {
+    console.log(sound);
 /*
     p.collideDebug(true);
     poly[0] = p.createVector(123,231);     // set X/Y position
@@ -442,8 +484,13 @@ var poly = [];
 
     audioProperties = new AudioProperties();
 
+    uiControls = new UIControls();
     waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
+
+    drawQueue = [ // ordering matters will decide the z-index
+      waveManager, player, uiControls
+    ];
 
     // particles = new VectorParticles(circleWave);
     // satellites.bass = new Satellite(circleWave, "bass");
@@ -460,8 +507,7 @@ var poly = [];
       p.background(themes.active.wall);
       audioProperties.update();
 
-      waveManager.draw();
-      player.draw();
+      drawQueue.forEach(ob => { ob.draw(); });
     }
 
 
