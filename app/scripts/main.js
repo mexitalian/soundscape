@@ -109,14 +109,14 @@ let handleFileSelect = function(ev) {
 
   if (audioUrls.length > 0) {
     audioPlayer = new FSAudioManager(audioUrls);
-    myp5 = new p5(sketch);
+    sketch.apply(window);
   }
 };
 
 document.querySelector('.js-files').addEventListener('change', handleFileSelect, false);
 document.querySelector('.js-use-local').addEventListener('click', function(ev) {
   audioPlayer = new LocalAudioManager();
-  myp5 = new p5(sketch);
+  sketch.apply(window);
 });
 
 let dom = function() {
@@ -164,7 +164,7 @@ dom.$connectSoundcloud.on("click", function() {
     // console.log(pl.tracks);
 
     audioPlayer = new SoundcloudManager(pl.tracks);
-    myp5 = new p5(sketch);
+    sketch.apply(window);
   });
 });
 
