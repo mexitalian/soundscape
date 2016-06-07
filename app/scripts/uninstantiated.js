@@ -126,8 +126,8 @@ function sketch() {
       for (let i=0; i < peaksPerScreen+peaksPerScreenBuffer; i++) {
 
         let j = i + Math.floor(positionX/peakDistance);
-        let x = Math.floor(i * peakDistance);
-        let y = Math.round( map(peaks[j], -1, 1, height/8, height-(height/8)) );
+        let x = i * peakDistance;
+        let y = map(peaks[j], -1, 1, height/8, height-(height/8));
 
         rawVs.push({x, y});
       };
@@ -137,11 +137,15 @@ function sketch() {
 
       // upper bounds
       for (let v of rawVs) {
-        vertices.push(createVector(v.x-offsetX, v.y-yOffset));
+        vertices.push(
+          createVector(Math.round(v.x-offsetX), Math.round(v.y-yOffset))
+        );
       }
       // lower bounds
       for (let v of rawVs.reverse()) {
-        vertices.push(createVector(v.x-offsetX, yOffset+v.y));
+        vertices.push(
+          createVector(Math.round(v.x-offsetX), Math.round(yOffset+v.y))
+        );
       }
 
       self.vertices = vertices;
@@ -444,8 +448,7 @@ Math.easeInQuart = function (t, b, c, d) {
 };
 
 
-var hit = false;
-var poly = [];
+let hit = false;
 
 /*
   -----------------------
@@ -497,12 +500,12 @@ var poly = [];
       audioProperties.update();
 
       drawQueue.forEach(ob => { ob.draw(); });
+      hit = collideCirclePoly(player.x, player.y, player.diameter, waveManager.vertices);
     }
 
     // ellipse(mouseX,mouseY,45,45);
     // hit = collideCirclePoly(mouseX,mouseY,45,waveManager.vertices);
 
-    hit = collideCirclePoly(player.x, player.y, player.diameter, waveManager.vertices);
     //enable the hit detection if the circle is wholly inside the polygon
 
     print("colliding? " + hit);
