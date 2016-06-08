@@ -122,11 +122,7 @@ let Sketch = function() {
       // get the raw vertices
       for (let i=0; i < peaksPerScreen+peaksPerScreenBuffer; i++) {
 
-        let j = i + Math.ceil(positionX/peakDistance);
-        console.log(`position: ${j}`);
-        console.log(`round:${Math.round(positionX/peakDistance)}`);
-        console.log(`floor:${Math.floor(positionX/peakDistance)}`);
-        console.log(`ceil:${Math.ceil(positionX/peakDistance)}`);
+        let j = i + ceil(positionX/peakDistance); // must be ceil
         let x = i * peakDistance;
         let y = map(peaks[j], -1, 1, 0, self.yMapUpperLimit);
 
@@ -139,13 +135,13 @@ let Sketch = function() {
       // upper bounds
       for (let v of rawVs) {
         vertices.push(
-          createVector(Math.round(v.x-offsetX), Math.round(v.y-yOffset))
+          createVector(round(v.x-offsetX), round(v.y-yOffset))
         );
       }
       // lower bounds
       for (let v of rawVs.reverse()) {
         vertices.push(
-          createVector(Math.round(v.x-offsetX), Math.round(yOffset+v.y))
+          createVector(round(v.x-offsetX), round(yOffset+v.y))
         );
       }
 
@@ -156,7 +152,7 @@ let Sketch = function() {
     };
 
     let updateOffsetX = function() {
-      offsetX = Math.ceil(positionX % peakDistance);
+      offsetX = ceil(positionX % peakDistance);
       // offsetX = Math.round( (offsetX + frameDistance) % peakDistance );
       // console.log(offsetX);
     };
@@ -222,7 +218,7 @@ let Sketch = function() {
 
     // fuck you internal critic, I'll be a baillerina
     let degree = 360/fr/(frequency === "bass" ? 2 : 1);
-    let radian = Math.radians(degree); // the increment around the circle in radians
+    let radian = radians(degree); // the increment around the circle in radians
     let x = this.x;
     let y = this.y;
     let newDiameter;
@@ -263,8 +259,8 @@ let Sketch = function() {
           break;
 
         default:
-          x = Math.sin(radian*i) * hypotenuse;
-          y = Math.cos(radian*i) * hypotenuse;
+          x = sin(radian*i) * hypotenuse;
+          y = cos(radian*i) * hypotenuse;
       }
       self.x = x = x + planet.x;
       self.y = y = y + planet.y;
@@ -366,7 +362,7 @@ let Sketch = function() {
     let radius = this.radius = 50; // px
     // we shall begin by doing a quarter circle
     let degree = 360/bins;
-    let radian = Math.radians(degree); // the increment around the circle in radians
+    let radian = radians(degree); // the increment around the circle in radians
     let vectors;
 
     let prevVectorsLength = 5; // 60 frames of old vectors = 1 second
@@ -429,8 +425,8 @@ let Sketch = function() {
               break;
 
             default:
-              x = Math.sin(radian*i) * hypotenuse;
-              y = Math.cos(radian*i) * hypotenuse;
+              x = sin(radian*i) * hypotenuse;
+              y = cos(radian*i) * hypotenuse;
           }
 
         x = x + center.x;
