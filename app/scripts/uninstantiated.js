@@ -96,37 +96,22 @@ let Sketch = function() {
   let TunnelManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
 
     let self = this;
-    let waveWidth = Math.floor(sound.duration() * width);
-    let peakDistance = width / peaksPerScreen;
-    let frameDistance = width / fr;
+    let waveWidth = Math.round(sound.duration() * width);
+    let peakDistance = Math.round(width/peaksPerScreen);
+    let frameDistance = Math.round(width/fr);
     let peakResolution = sound.duration() * 4; // t::todo needs to account for parts of a second
     let peaks = sound.getPeaks(peakResolution); // waveform for full audio <- add resolution here
 
     let positionX = 0;
     let offsetX = 0;
-    let maxOffsetY = -30;
+    self.yMapUpperLimit = height/1.5;
+    self.maxOffsetY = -30;
     let vertices;
 
-    this.onOrientationChange = function() {
-      waveWidth = Math.floor(sound.duration() * width);
+    this.onOrientationChange = function() { // not begin used so far
+      waveWidth = Math.round(sound.duration() * width);
       peakDistance = width / peaksPerScreen;
       frameDistance = width / fr;
-    };
-
-    let updateOffsetX = function() {
-      offsetX = Math.round( positionX % peakDistance );
-      // offsetX = Math.round( (offsetX + frameDistance) % peakDistance );
-      // console.log(offsetX);
-    };
-
-    let updatePositionX = function() {
-      if (positionX < waveWidth) {
-        // move one full screen per framerate
-        positionX += Math.floor(frameDistance);
-      }
-      else {
-        positionX = 0;
-      }
     };
 
     let updateVertices = function() {
@@ -137,14 +122,18 @@ let Sketch = function() {
       // get the raw vertices
       for (let i=0; i < peaksPerScreen+peaksPerScreenBuffer; i++) {
 
-        let j = i + Math.floor(positionX/peakDistance);
+        let j = i + Math.ceil(positionX/peakDistance);
+        console.log(`position: ${j}`);
+        console.log(`round:${Math.round(positionX/peakDistance)}`);
+        console.log(`floor:${Math.floor(positionX/peakDistance)}`);
+        console.log(`ceil:${Math.ceil(positionX/peakDistance)}`);
         let x = i * peakDistance;
-        let y = map(peaks[j], -1, 1, height/8, height-(height/8));
+        let y = map(peaks[j], -1, 1, 0, self.yMapUpperLimit);
 
         rawVs.push({x, y});
       };
       // create the audio reactive and offset bounds
-      let yOffset = map(audioProperties.energy.bass, 0, 255, maxOffsetY, 0) + height/4;
+      let yOffset = map(audioProperties.energy.bass, 0, 255, self.maxOffsetY, 0) + height/4;
       // let yOffset = height/4; // no audio offset
 
       // upper bounds
@@ -164,6 +153,22 @@ let Sketch = function() {
       // t::todo put this line in
       // return the vertices from this function to wherever it is called
       // return vertices;
+    };
+
+    let updateOffsetX = function() {
+      offsetX = Math.ceil(positionX % peakDistance);
+      // offsetX = Math.round( (offsetX + frameDistance) % peakDistance );
+      // console.log(offsetX);
+    };
+
+    let updatePositionX = function() {
+      if (positionX < waveWidth) {
+        // move one full screen per framerate
+        positionX += frameDistance;
+      }
+      else {
+        positionX = 0;
+      }
     };
 
     let updateVars = function() {
@@ -509,14 +514,14 @@ let hit = false;
     collideDebug(true);
 
     frameRate(fr);
-    cnv = createCanvas(windowWidth, windowHeight);
+    cnv = createCanvas(600, 400); //windowWidth, windowHeight
     cnv.mousePressed(function() {
       if (!sound.isPlaying())
         player.mode = "reset";
     });
 
     fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
-    sound.amp(0.2);
+    sound.amp(1, 1);
     center.x = width / 2;
     center.y = height / 2;
 
@@ -544,6 +549,7 @@ let hit = false;
     self.peaks = peaks;
     self.player = player;
 
+    initDatGUI();
   };
 
   window.draw = function() {
@@ -565,7 +571,7 @@ let hit = false;
   };
 
   window.windowResized = function() {
-    resizeCanvas(windowWidth, windowHeight);
+    resizeCanvas(600, 400); //windowWidth, windowHeight
     center.x = width / 2;
     center.y = height / 2;
   };
@@ -603,6 +609,12 @@ let hit = false;
     }
   };
 
+
+  let initDatGUI = function() {
+    let gui = new dat.GUI();
+    gui.add(peaks, 'yMapUpperLimit', 0, 1000);
+    gui.add(peaks, 'maxOffsetY', -30, 30);
+  };
 
   /* Hacking, need to fire a window load event to have P5 run the sketch code */
   window.dispatchEvent(new Event('load')); // this is window
