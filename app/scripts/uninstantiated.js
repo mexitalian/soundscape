@@ -1,11 +1,23 @@
-function sketch() {
+let Sketch = function() {
+
+  let self = this;
   let fr = 60;
   let SPEED = 1;
   let peaksPerScreen = 3;
   let peaksPerScreenBuffer = 2;
   let bins = 256;
-
-  let sound, fft, cnv, waveManager, player, wavy, circleWave, particles, satellites = {}, audioProperties, uiControls, drawQueue;
+  let sound
+    , fft
+    , cnv
+    , peaks
+    , player
+    , wavy
+    , circleWave
+    , particles
+    , satellites = {}
+    , audioProperties
+    , uiControls
+    , drawQueue;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let center = {};
@@ -81,7 +93,7 @@ function sketch() {
     }
   };
 
-  let WaveformManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
+  let TunnelManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
 
     let self = this;
     let waveWidth = Math.floor(sound.duration() * width);
@@ -92,7 +104,7 @@ function sketch() {
 
     let positionX = 0;
     let offsetX = 0;
-    let maxOffsetY = 30;
+    let maxOffsetY = -30;
     let vertices;
 
     this.onOrientationChange = function() {
@@ -132,7 +144,7 @@ function sketch() {
         rawVs.push({x, y});
       };
       // create the audio reactive and offset bounds
-      let yOffset = map(audioProperties.energy.bass, 0, 255, 0, maxOffsetY) + height/4;
+      let yOffset = map(audioProperties.energy.bass, 0, 255, maxOffsetY, 0) + height/4;
       // let yOffset = height/4; // no audio offset
 
       // upper bounds
@@ -162,7 +174,8 @@ function sketch() {
 
     this.draw = function() {
 
-      updateVars();
+      if (sound.isPlaying())
+        updateVars();
 
       beginShape();
       fill(themes.active.bg);
@@ -173,6 +186,25 @@ function sketch() {
         vertex(v.x, v.y);
       }
       endShape();
+    };
+
+    this.getCenterY = function() {
+
+      let cv = vertices.filter(v => {
+        return v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
+      });
+
+      let adj = cv[1].x - cv[0].x; // same as peakDistance but rounded
+      let oppOnRight = cv[0].y > cv[1].y;
+      let opp = oppOnRight ? cv[0].y - cv[1].y : cv[1].y - cv[0].y;
+      let rad = atan(opp/adj);
+      let adjToCenter = oppOnRight ? center.x - cv[0].x : cv[1].x - center.x;
+      let oppAtCenter = adjToCenter * tan(rad);
+      let y = oppOnRight ? cv[0].y - oppAtCenter : cv[1].y - oppAtCenter;
+
+      y += (height/4); // by the half distance between top and bottom
+
+      return y;
     };
 
     // cue points
@@ -246,44 +278,58 @@ function sketch() {
     let self = this;
     let x = center.x;
     let y = center.y; // begin at center
-    let maxDiameter = 75;
+    let diameter;
+    let minDiameter = 10;
+    let maxDiameter = 50;
     let hasThrust = false;
+    let gravity = 6;
+    let thrust = 4;
+    self.mode = "play";
 
-    $(document).on("thrust", function() {
-      hasThrust = true;
-    });
-    $(document).on("gravity", function() {
-      hasThrust = false;
-    });
+    let updateVars = function() {
 
-    this.draw = function() {
+      switch(self.mode) {
+        case "play":
+          if (y<height && y>0) {
+            y = mouseIsPressed ? y-2 : y+4;
+          }
+          else if (y==height && mouseIsPressed) {
+            y -= thrust;
+          }
+          else if (y==0 && !mouseIsPressed) {
+            y += gravity;
+          }
+          else if (y>height) {
+            y = height;
+          }
+          else if (y<0) {
+            y = 0;
+          }
 
-      if (y<height && y>0) {
-        y = mouseIsPressed ? y-2 : y+4;
-      }
-      else if (y==height && mouseIsPressed) {
-        y -= 2;
-      }
-      else if (y==0 && !mouseIsPressed) {
-        y += 4;
-      }
-      else if (y>height) {
-        y = height;
-      }
-      else if (y<0) {
-        y = 0;
-      }
+          diameter = map(audioProperties.energy.bass, 0, 255, 0, maxDiameter);
+          break;
 
-      let diameter = map(audioProperties.energy.bass, 0, 255, 0, maxDiameter);
+        case "reset":
+          y = peaks.getCenterY();
+          self.mode = "play";
+          sound.play();
+          break;
 
-      noStroke();
-      fill(255);
-      ellipse(x, y, diameter, diameter);
+        default: break;
+      }
 
       self.x = x;
       self.y = y;
       self.diameter = diameter;
-    }
+    };
+
+    this.draw = function() {
+      updateVars();
+      noStroke();
+      fill(255);
+      ellipse(x, y, diameter, diameter);
+    };
+
   };
 
 
@@ -295,8 +341,6 @@ function sketch() {
       beginShape();
       stroke(255,255,255); // waveform is red
       strokeWeight(1);
-
-      // console.log(`waveform: ${waveform.length}`);
 
       for (var i = 0; i< waveform.length; i++){
         var x = map(i, 0, waveform.length, 0, width);
@@ -456,18 +500,20 @@ let hit = false;
   -----------------------
 */
 
-  this.preload = function() {
+  window.preload = function() {
     sound = loadSound(url); // put in the soundcloud retrieved URL
   };
 
-  this.setup = function() {
+  window.setup = function() {
 
     collideDebug(true);
 
     frameRate(fr);
     cnv = createCanvas(windowWidth, windowHeight);
-
-    // cnv.mouseClicked(togglePlay);
+    cnv.mousePressed(function() {
+      if (!sound.isPlaying())
+        player.mode = "reset";
+    });
 
     fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
     sound.amp(0.2);
@@ -477,11 +523,11 @@ let hit = false;
     audioProperties = new AudioProperties();
 
     uiControls = new UIControls();
-    waveManager = new WaveformManager(sound, peaksPerScreen, SPEED);
+    peaks = new TunnelManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
 
     drawQueue = [ // ordering matters will decide the z-index
-      waveManager, player, uiControls
+      peaks, player, uiControls
     ];
 
     // particles = new VectorParticles(circleWave);
@@ -492,35 +538,49 @@ let hit = false;
     background(0);
     togglePlay();
 
+    self.sound = sound;
+    self.audioProperties = audioProperties;
+    self.uiControls = uiControls;
+    self.peaks = peaks;
+    self.player = player;
+
   };
 
-  this.draw = function() {
-    if (sound.isPlaying()) {
-      background(themes.active.wall);
+  window.draw = function() {
+
+    if (sound.isPlaying())
       audioProperties.update();
 
-      drawQueue.forEach(ob => { ob.draw(); });
-      hit = collideCirclePoly(player.x, player.y, player.diameter, waveManager.vertices);
+    background(themes.active.wall);
+
+    drawQueue.forEach(ob => { ob.draw(); });
+    hit = collideCirclePoly(player.x, player.y, player.diameter, peaks.vertices);
+    // print("colliding? " + hit);
+
+    if (hit && player.mode !== "pause") {
+      togglePlay("pause");
+      player.mode = "pause";
     }
-
-    // ellipse(mouseX,mouseY,45,45);
-    // hit = collideCirclePoly(mouseX,mouseY,45,waveManager.vertices);
-
-    //enable the hit detection if the circle is wholly inside the polygon
-
-    print("colliding? " + hit);
 
   };
 
-  this.windowResized = function() {
+  window.windowResized = function() {
     resizeCanvas(windowWidth, windowHeight);
     center.x = width / 2;
     center.y = height / 2;
   };
 
-  this.keyPressed = function(ev) {
-    if (keyCode === ESCAPE) {
-      togglePlay();
+  window.keyPressed = function(ev) {
+    switch(keyCode) {
+
+      case ESCAPE:
+        togglePlay();
+        player.mode = "play";
+        break;
+
+      /*case DOWN_ARROW:
+        player.mode = "reset";
+        break;*/
     }
   };
 /*
@@ -532,16 +592,18 @@ let hit = false;
 
 
   // fade sound if mouse is over canvas
-  let togglePlay = function() {
-    if (sound.isPlaying()) {
+  let togglePlay = function(toggle) {
+    if (toggle==="pause") {
+      sound.pause();
+    }
+    else if (sound.isPlaying()) {
       sound.pause();
     } else {
-      sound.loop();
+      sound.play();
     }
   };
 
 
   /* Hacking, need to fire a window load event to have P5 run the sketch code */
-  debugger;
-  this.dispatchEvent(new Event('load')); // this is window
+  window.dispatchEvent(new Event('load')); // this is window
 };

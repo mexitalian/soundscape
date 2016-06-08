@@ -1,4 +1,4 @@
-let audioPlayer, myp5; // to be populated on soundcloud connect success
+let audioPlayer, myp5, sketch; // to be populated on soundcloud connect success
 
 /*
 // Check for the various File API support.
@@ -109,14 +109,14 @@ let handleFileSelect = function(ev) {
 
   if (audioUrls.length > 0) {
     audioPlayer = new FSAudioManager(audioUrls);
-    sketch.apply(window);
+    sketch = new Sketch();
   }
 };
 
 document.querySelector('.js-files').addEventListener('change', handleFileSelect, false);
 document.querySelector('.js-use-local').addEventListener('click', function(ev) {
   audioPlayer = new LocalAudioManager();
-  sketch.apply(window);
+  sketch = new Sketch();
 });
 
 let dom = function() {
@@ -164,7 +164,7 @@ dom.$connectSoundcloud.on("click", function() {
     // console.log(pl.tracks);
 
     audioPlayer = new SoundcloudManager(pl.tracks);
-    sketch.apply(window);
+    sketch = new Sketch();
   });
 });
 
