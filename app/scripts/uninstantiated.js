@@ -9,9 +9,9 @@ let Sketch = function() {
   let sound
     , fft
     , cnv
-    , peaks
+    , tunnel
     , player
-    , wavy
+    , waveform
     , circleWave
     , particles
     , satellites = {}
@@ -66,7 +66,7 @@ let Sketch = function() {
       , duration = sound.duration()
       , track = {
           length: width, //width-paddingX*2,
-          lengthToPeakRatio: Math.ceil(peaks.peaks.length/this.length),
+          lengthToPeakRatio: Math.ceil(tunnel.peaks.length/this.length),
           x: 0, //paddingX,
           y: peaksAreMirrored ? height + self.peakHeightMultiplier : height
       }
@@ -90,8 +90,8 @@ let Sketch = function() {
       for (let i=0; i<track.length; i++) {
 
         let x = track.x+i;
-        let y1 = track.y+peaks.peaks[i]*self.peakHeightMultiplier;
-        let y2 = track.y+peaks.peaks[i]*-self.peakHeightMultiplier;
+        let y1 = track.y+tunnel.peaks[i]*self.peakHeightMultiplier;
+        let y2 = track.y+tunnel.peaks[i]*-self.peakHeightMultiplier;
 
         stroke( x < ph.x ? 255 : 0 );
         strokeWeight(1);
@@ -200,23 +200,31 @@ let Sketch = function() {
       endShape();
     };
 
-    this.getCenterY = function() {
+    this.getY = function(position) {
 
       let cv = vertices.filter(v => {
+        // get the two vertices either side of the horizontal center
         return v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
       });
-
       let adj = cv[1].x - cv[0].x; // same as peakDistance but rounded
       let oppOnRight = cv[0].y > cv[1].y;
       let opp = oppOnRight ? cv[0].y - cv[1].y : cv[1].y - cv[0].y;
       let rad = atan(opp/adj);
       let adjToCenter = oppOnRight ? center.x - cv[0].x : cv[1].x - center.x;
       let oppAtCenter = adjToCenter * tan(rad);
-      let y = oppOnRight ? cv[0].y - oppAtCenter : cv[1].y - oppAtCenter;
+      let y = oppOnRight ? cv[0].y - oppAtCenter : cv[1].y - oppAtCenter; // topmost point of the linedraw between vertices
 
-      y += (height/4); // by the half distance between top and bottom
+      switch (position)
+      {
+        case 'top':
+          return y;
 
-      return y;
+        case 'bottom':
+          return y + height/2; // the distance between top and bottom
+
+        case 'center':
+          return y + height/4; // by the half distance between top and bottom
+      }
     };
 
     // cue points
@@ -322,7 +330,7 @@ let Sketch = function() {
           break;
 
         case "reset":
-          y = peaks.getCenterY();
+          y = tunnel.getY('center');
           self.mode = "play";
           sound.play();
           break;
@@ -346,19 +354,55 @@ let Sketch = function() {
 
 
 
-  let Wavy = function() {
+  let Wavy = function(orientation = 'tunnel') {
+
+    let minX, maxX, minY, maxY
+      , audio = audioProperties;
+
+    if (orientation === "vertical") {
+       minX = width*.25;
+       maxX = width*.75;
+    }
+    else if (orientation === "tunnel") {
+      minX = 0;
+      maxX = width*.1;
+    }
+
     let draw = function() {
-      let waveform = fft.waveform();
+
+
+      if (orientation === 'tunnel') {
+        minY = tunnel.getY('top');
+        maxY = tunnel.getY('bottom');
+      }
+
       noFill();
       beginShape();
       stroke(255,255,255); // waveform is red
       strokeWeight(1);
 
-      for (var i = 0; i< waveform.length; i++){
-        var x = map(i, 0, waveform.length, 0, width);
-        var y = map( waveform[i], -1, 1, 0, height);
+      for (let i = 0; i< audio.waveform.length; i++)
+      {
+        let x, y;
+        switch (orientation) {
+          case 'tunnel':
+            x = (width/2 + maxX/2) - map(audio.waveform[i], -1, 1, minX, maxX);
+            y = map(i, 0, audio.waveform.length, minY, maxY); // there will be surplus detail here that cannot be drawn, only take the available pixels to peaks
+            break;
+
+          case 'vertical':
+            x = map(audio.waveform[i], -1, 1, minX, maxX);
+            y = map(i, 0, audio.waveform.length, 0, height);
+            break;
+
+          case 'horizontal':
+            x = map(i, 0, audio.waveform.length, 0, width);
+            y = map(audio.waveform[i], -1, 1, 0, height);
+            break;
+        }
         vertex(x,y);
       }
+
       endShape();
     };
 
@@ -534,12 +578,13 @@ let hit = false;
 
     audioProperties = new AudioProperties();
 
-    peaks = new TunnelManager(sound, peaksPerScreen, SPEED);
+    tunnel = new TunnelManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
     uiControls = new UIControls();
+    waveform = new Wavy();
 
     drawQueue = [ // ordering matters will decide the z-index
-      peaks, player, uiControls
+      tunnel, player, uiControls, waveform
     ];
 
     // particles = new VectorParticles(circleWave);
@@ -553,7 +598,7 @@ let hit = false;
     self.sound = sound;
     self.audioProperties = audioProperties;
     self.uiControls = uiControls;
-    self.peaks = peaks;
+    self.tunnel = tunnel;
     self.player = player;
 
     initDatGUI();
@@ -567,7 +612,7 @@ let hit = false;
     background(themes.active.wall);
 
     drawQueue.forEach(ob => { ob.draw(); });
-    hit = collideCirclePoly(player.x, player.y, player.diameter, peaks.vertices);
+    hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
     // print("colliding? " + hit);
 
     if (hit && player.mode !== "pause") {
@@ -619,8 +664,8 @@ let hit = false;
 
   let initDatGUI = function() {
     let gui = new dat.GUI();
-    gui.add(peaks, 'yMapUpperLimit', 0, 1000);
-    gui.add(peaks, 'maxOffsetY', -30, 30);
+    gui.add(tunnel, 'yMapUpperLimit', 0, 1000);
+    gui.add(tunnel, 'maxOffsetY', -30, 30);
     gui.add(player, 'maxDiameter', 0, 100);
     gui.add(player, 'minDiameter', 0, 100);
     gui.add(uiControls, 'peakHeightMultiplier', -100, 100);
