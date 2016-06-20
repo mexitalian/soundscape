@@ -1,3 +1,5 @@
+"use strict"
+
 let audioPlayer, myp5, sketch; // to be populated on soundcloud connect success
 
 /*
@@ -32,7 +34,7 @@ let SoundcloudManager = function(tracks) {
 };
 
 let LocalAudioManager = function() {
-  this.urls = ["hayley", "yuna", "alt-j", "london", "coma"].map(track => {
+  this.urls = ['hayley', 'yuna', 'alt-j', 'london', 'coma'].map(track => {
     return `media/${track}.mp3`;
   });
 }
@@ -88,7 +90,7 @@ let handleFileSelect = function(ev) {
   let output = [];
   let audio = new Audio();
 
-  console.log("// files is a FileList of File objects. List some properties.");
+  console.log('// files is a FileList of File objects. List some properties.');
 
   for (let i = 0, f; f = files[i]; i++) { // look at using .filter()
 
@@ -121,8 +123,8 @@ document.querySelector('.js-use-local').addEventListener('click', function(ev) {
 
 let dom = function() {
 
-  let $playbackBtn = $(".js-play");
-  let $connectSoundcloud = $(".js-connect-soundcloud");
+  let $playbackBtn = $('.js-play');
+  let $connectSoundcloud = $('.js-connect-soundcloud');
 
   return {$playbackBtn, $connectSoundcloud};
 }();
@@ -192,18 +194,18 @@ dom.$waveContainer.css({
 
   let onMouseClick = function(ev) {
     ev.preventDefault();
-    $(document).trigger("thrust");
-    console.log("thrust");
+    $(document).trigger('thrust');
+    console.log('thrust');
   }
 
-  $(document).one("mousedown", onMouseClick);
-  $(document).on("mouseup", ev => {
-    $(document).one("mousedown", onMouseClick);
-    $(document).trigger("gravity");
-    console.log("gravity");
+  $(document).one('mousedown', onMouseClick);
+  $(document).on('mouseup', ev => {
+    $(document).one('mousedown', onMouseClick);
+    $(document).trigger('gravity');
+    console.log('gravity');
   });
 
-  $(document).on("keydown", ev => {
+  $(document).on('keydown', ev => {
     let left = 37
       , up = 38
       , right = 39
@@ -211,12 +213,12 @@ dom.$waveContainer.css({
 
     switch(ev.keyCode) {
       case up:
-        $(document).trigger("up");
-        console.log("up");
+        $(document).trigger('up');
+        console.log('up');
            break;
-      case down:  $(document).trigger("down");   break;
-      case left:  $(document).trigger("left");   break;
-      case right: $(document).trigger("right");  break;
+      case down:  $(document).trigger('down');   break;
+      case left:  $(document).trigger('left');   break;
+      case right: $(document).trigger('right');  break;
     }
 
   });
