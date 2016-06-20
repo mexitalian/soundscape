@@ -356,7 +356,7 @@ let Sketch = function() {
 
   let Wavy = function(orientation = 'tunnel') {
 
-    let minX, maxX, minY, maxY
+    let minX, maxX, minY, maxY, prevWaves = []
       , audio = audioProperties;
 
     if (orientation === "vertical") {
@@ -376,10 +376,10 @@ let Sketch = function() {
         maxY = tunnel.getY('bottom');
       }
 
-      noFill();
+      let wave = [], frameDiv = 3;
+
       beginShape();
-      stroke(255,255,255); // waveform is red
-      strokeWeight(1);
+      stroke(255); // waveform is white
 
       for (let i = 0; i< audio.waveform.length; i++)
       {
@@ -400,10 +400,38 @@ let Sketch = function() {
             y = map(audio.waveform[i], -1, 1, 0, height);
             break;
         }
+
         vertex(x,y);
+        wave.push({x,y});
       }
 
       endShape();
+
+      if (frameCount%frameDiv === 0)
+        prevWaves.unshift(wave);
+
+      if (prevWaves.length > 8) {
+        prevWaves.pop();
+      }
+
+      if (prevWaves.length > 0) {
+
+        noFill();
+        strokeWeight(1);
+
+        for (let j=0; j<prevWaves.length; j++)
+        {
+          let offset = ((j+1)*Math.round((width/fr)*frameDiv));
+          beginShape();
+          stroke(255-offset); // waveform is progressive shades away from white
+
+          for (let k=0; k<prevWaves[j].length; k++)
+          {
+            vertex(prevWaves[j][k].x-offset, prevWaves[j][k].y);
+          }
+          endShape();
+        }
+      }
     };
 
     return { draw };
