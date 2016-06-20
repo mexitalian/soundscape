@@ -56,14 +56,19 @@ let Sketch = function() {
     this.update();
   };
 
-  let UIControls = function() {
+  let UIControls = function(peaksAreMirrored = false) {
     // sound is contructed before this instance is created
-    let duration = sound.duration()
+
+    let self = this;
+        self.peakHeightMultiplier = -30;
+
+    let paddingX = 100
+      , duration = sound.duration()
       , track = {
-          length: width-200,
+          length: width, //width-paddingX*2,
           lengthToPeakRatio: Math.ceil(peaks.peaks.length/this.length),
-          x: 100,
-          y: height - 30
+          x: 0, //paddingX,
+          y: peaksAreMirrored ? height + self.peakHeightMultiplier : height
       }
       , ph = { // playhead
           x: track.x,
@@ -85,13 +90,15 @@ let Sketch = function() {
       for (let i=0; i<track.length; i++) {
 
         let x = track.x+i;
-        let y1 = track.y+peaks.peaks[i]*10;
-        let y2 = track.y+peaks.peaks[i]*-10;
+        let y1 = track.y+peaks.peaks[i]*self.peakHeightMultiplier;
+        let y2 = track.y+peaks.peaks[i]*-self.peakHeightMultiplier;
 
         stroke( x < ph.x ? 255 : 0 );
         strokeWeight(1);
         line(x, track.y, x, y1);
-        line(x, y2, x, track.y);
+
+        if (peaksAreMirrored)
+          line(x, y2, x, track.y);
       }
 
     }
@@ -616,6 +623,7 @@ let hit = false;
     gui.add(peaks, 'maxOffsetY', -30, 30);
     gui.add(player, 'maxDiameter', 0, 100);
     gui.add(player, 'minDiameter', 0, 100);
+    gui.add(uiControls, 'peakHeightMultiplier', -100, 100);
   };
 
   /* Hacking, need to fire a window load event to have P5 run the sketch code */
