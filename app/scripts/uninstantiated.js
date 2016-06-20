@@ -60,36 +60,40 @@ let Sketch = function() {
     // sound is contructed before this instance is created
     let duration = sound.duration()
       , track = {
-          length: width/2,
-          x1: width*.25,
-          x2: width*.75,
+          length: width-200,
+          lengthToPeakRatio: Math.ceil(peaks.peaks.length/this.length),
+          x: 100,
           y: height - 30
       }
       , ph = { // playhead
-          width: 12,
-          height: 12,
-          x: track.x1,
-          y: track.y,
+          x: track.x,
           xIncr: track.length / duration,
           updateX: function() {
             // only update once every 250 ms
             // can be taken out to improve smoothness, is an effort at killing overhead
-            if (frameCount % (fr/4) !== 0) {
-              return;
-            }
-            this.x = track.x1 + this.xIncr * sound.currentTime();
+            // if (frameCount % (fr/4) !== 0) {
+            //   return;
+            // }
+            this.x = track.x + this.xIncr * sound.currentTime();
           }
       };
 
     this.draw = function() {
+
       ph.updateX();
 
-      strokeWeight(2);
-      stroke(0);
-      line(track.x1, track.y, track.x2, track.y);
-      noStroke();
-      fill(255);
-      ellipse(ph.x, ph.y, ph.width, ph.height);
+      for (let i=0; i<track.length; i++) {
+
+        let x = track.x+i;
+        let y1 = track.y+peaks.peaks[i]*10;
+        let y2 = track.y+peaks.peaks[i]*-10;
+
+        stroke( x < ph.x ? 255 : 0 );
+        strokeWeight(1);
+        line(x, track.y, x, y1);
+        line(x, y2, x, track.y);
+      }
+
     }
   };
 
@@ -100,7 +104,7 @@ let Sketch = function() {
     let peakDistance = Math.round(width/peaksPerScreen);
     let frameDistance = Math.round(width/fr);
     let peakResolution = sound.duration() * 4; // t::todo needs to account for parts of a second
-    let peaks = sound.getPeaks(peakResolution); // waveform for full audio <- add resolution here
+    self.peaks = sound.getPeaks(peakResolution); // waveform for full audio <- add resolution here
 
     let positionX = 0;
     let offsetX = 0;
@@ -124,7 +128,7 @@ let Sketch = function() {
 
         let j = i + ceil(positionX/peakDistance); // must be ceil
         let x = i * peakDistance;
-        let y = map(peaks[j], -1, 1, 0, self.yMapUpperLimit);
+        let y = map(self.peaks[j], -1, 1, 0, self.yMapUpperLimit);
 
         rawVs.push({x, y});
       };
@@ -523,9 +527,9 @@ let hit = false;
 
     audioProperties = new AudioProperties();
 
-    uiControls = new UIControls();
     peaks = new TunnelManager(sound, peaksPerScreen, SPEED);
     player = new PlayerManager();
+    uiControls = new UIControls();
 
     drawQueue = [ // ordering matters will decide the z-index
       peaks, player, uiControls
