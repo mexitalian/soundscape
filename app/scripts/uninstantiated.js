@@ -284,8 +284,8 @@ let Sketch = function() {
     let x = center.x;
     let y = center.y; // begin at center
     let diameter;
-    let minDiameter = 10;
-    let maxDiameter = 50;
+    self.minDiameter = 10;
+    self.maxDiameter = 50;
     let hasThrust = false;
     let gravity = 6;
     let thrust = 4;
@@ -311,7 +311,7 @@ let Sketch = function() {
             y = 0;
           }
 
-          diameter = map(audioProperties.energy.bass, 0, 255, 0, maxDiameter);
+          diameter = map(audioProperties.energy.bass, 0, 255, self.minDiameter, self.maxDiameter);
           break;
 
         case "reset":
@@ -614,6 +614,8 @@ let hit = false;
     let gui = new dat.GUI();
     gui.add(peaks, 'yMapUpperLimit', 0, 1000);
     gui.add(peaks, 'maxOffsetY', -30, 30);
+    gui.add(player, 'maxDiameter', 0, 100);
+    gui.add(player, 'minDiameter', 0, 100);
   };
 
   /* Hacking, need to fire a window load event to have P5 run the sketch code */
