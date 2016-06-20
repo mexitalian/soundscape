@@ -379,6 +379,7 @@ let Sketch = function() {
       let wave = [], frameDiv = 3;
 
       beginShape();
+      noFill();
       stroke(255); // waveform is white
 
       for (let i = 0; i< audio.waveform.length; i++)
