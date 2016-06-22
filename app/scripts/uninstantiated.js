@@ -30,7 +30,15 @@ let Sketch = function() {
     classic: {
       bg: [0], // blick
       wall: [102,255,102] // green
-    }
+    }/*,
+    dynamic: {
+      bg: [0,0,0],
+      wall: [
+        audioProperties.bass,
+        audioProperties.mid,
+        audioProperties.treble
+      ]
+    }*/
   };
   themes.active = themes.classic;
 
@@ -638,7 +646,10 @@ let hit = false;
     if (sound.isPlaying())
       audioProperties.update();
 
-    background(themes.active.wall);
+    // background(themes.active.wall);
+    background([
+      audioProperties.energy.bass, audioProperties.energy.mid, audioProperties.energy.treble
+    ]);
 
     drawQueue.forEach(ob => { ob.draw(); });
     hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
