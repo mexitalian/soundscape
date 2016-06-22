@@ -308,44 +308,82 @@ let Sketch = function() {
     let y = center.y; // begin at center
     let diameter;
     self.minDiameter = 10;
-    self.maxDiameter = 50;
+    self.maxDiameter = self.minDiameter + self.minDiameter*3;
     let hasThrust = false;
     let gravity = 6;
     let thrust = 4;
+    let resetOnFrame;
+
     self.mode = "play";
 
     let updateVars = function() {
 
-      switch(self.mode) {
-        case "play":
-          if (y<height && y>0) {
-            y = mouseIsPressed ? y-2 : y+4;
-          }
-          else if (y==height && mouseIsPressed) {
-            y -= thrust;
-          }
-          else if (y==0 && !mouseIsPressed) {
-            y += gravity;
-          }
-          else if (y>height) {
-            y = height;
-          }
-          else if (y<0) {
-            y = 0;
-          }
+      let updateY = function() {
 
-          diameter = map(audioProperties.energy.bass, 0, 255, self.minDiameter, self.maxDiameter);
+        if (y<height && y>0) {
+          y = mouseIsPressed ? y-2 : y+4;
+        }
+        else if (y==height && mouseIsPressed) {
+          y -= thrust;
+        }
+        else if (y==0 && !mouseIsPressed) {
+          y += gravity;
+        }
+        else if (y>height) {
+          y = height;
+        }
+        else if (y<0) {
+          y = 0;
+        }
+      };
+
+      switch(self.mode) {
+
+        case 'play':
+          updateY();
           break;
 
-        case "reset":
+        case 'reset':
           y = tunnel.getY('center');
-          self.mode = "play";
-          sound.play();
+          self.minDiameter = 1;
+          self.maxDiameter = self.minDiameter + self.minDiameter*3;
+          self.mode = 'limbo';
+          $(document).trigger({type: 'volume:change', level: 0.1});
+          break;
+
+        case 'limbo':
+          y = tunnel.getY('center');
+          $(document).one('thrust', function() {
+            resetOnFrame = frameCount;
+            self.mode = 'recovering';
+          });
+          break;
+
+        case 'recovering':
+
+          let minDiameter = floor((frameCount-resetOnFrame)/18); // 18 makes it 3 seconds
+
+          if (minDiameter > self.minDiameter) {
+            self.minDiameter = minDiameter;
+            self.maxDiameter = self.minDiameter + self.minDiameter*3;
+
+            $(document).trigger({
+              type: 'volume:change',
+              level: ((frameCount-resetOnFrame)/18)/10
+            });
+
+            if (self.minDiameter === 10) {
+              self.mode = 'play';
+            }
+          }
+
+          updateY();
           break;
 
         default: break;
       }
 
+      diameter = map(audioProperties.energy.bass, 0, 255, self.minDiameter, self.maxDiameter);
       self.x = x;
       self.y = y;
       self.diameter = diameter;
@@ -419,7 +457,7 @@ let Sketch = function() {
       if (frameCount%frameDiv === 0)
         prevWaves.unshift(wave);
 
-      if (prevWaves.length > 8) {
+      if (prevWaves.length > player.minDiameter-1) {
         prevWaves.pop();
       }
 
@@ -599,15 +637,16 @@ let hit = false;
 
   window.setup = function() {
 
-    collideDebug(true);
+    // collideDebug(true);
 
     frameRate(fr);
     cnv = createCanvas(600, 400); //windowWidth, windowHeight
+/*
     cnv.mousePressed(function() {
       if (!sound.isPlaying())
-        player.mode = "reset";
+        player.mode = 'reset';
     });
-
+*/
     fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
     sound.amp(1, 1);
     center.x = width / 2;
@@ -628,6 +667,11 @@ let hit = false;
     // satellites.bass = new Satellite(circleWave, "bass");
     // satellites.mid = new Satellite(circleWave, "treble");
     // satellites.treble = new Satellite(satellites.bass, "treble");
+
+    $(document).on('volume:change', function(ev) {
+      console.log(ev.level);
+      sound.setVolume(ev.level);
+    });
 
     background(0);
     togglePlay();
@@ -655,9 +699,9 @@ let hit = false;
     hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
     // print("colliding? " + hit);
 
-    if (hit && player.mode !== "pause") {
-      togglePlay("pause");
-      player.mode = "pause";
+    if (hit/* && player.mode !== 'pause'*/) {
+      // togglePlay('pause');
+      player.mode = 'reset';
     }
 
   };
@@ -673,7 +717,6 @@ let hit = false;
 
       case ESCAPE:
         togglePlay();
-        player.mode = "play";
         break;
 
       /*case DOWN_ARROW:
@@ -681,23 +724,25 @@ let hit = false;
         break;*/
     }
   };
+
+
 /*
   -----------------------
   Processing Loop -  end
   -----------------------
 */
 
-
-
   // fade sound if mouse is over canvas
   let togglePlay = function(toggle) {
-    if (toggle==="pause") {
+    if (toggle === 'pause') {
       sound.pause();
     }
     else if (sound.isPlaying()) {
       sound.pause();
+      player.mode = 'pause';
     } else {
       sound.play();
+      player.mode = 'play';
     }
   };
 
