@@ -321,12 +321,14 @@ let Sketch = function() {
       let updateY = function() {
 
         if (y<height && y>0) {
-          y = mouseIsPressed ? y-2 : y+4;
+          y = mouseIsPressed || keyIsDown(32) ? y-2 : y+4;
         }
-        else if (y==height && mouseIsPressed) {
+        else if (y==height &&
+                (mouseIsPressed || keyIsDown(32))) {
           y -= thrust;
         }
-        else if (y==0 && !mouseIsPressed) {
+        else if (y==0 &&
+                (!mouseIsPressed || !keyIsDown(32))) {
           y += gravity;
         }
         else if (y>height) {

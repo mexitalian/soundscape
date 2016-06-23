@@ -205,22 +205,39 @@ dom.$waveContainer.css({
     console.log('gravity');
   });
 
-  $(document).on('keydown', ev => {
+  let onKeydown = function(ev) {
+
+    ev.preventDefault();
+
     let left = 37
       , up = 38
       , right = 39
-      , down = 40;
+      , down = 40
+      , space = 32;
 
     switch(ev.keyCode) {
-      case up:
-        $(document).trigger('up');
-        console.log('up');
-           break;
+      case space:
+        $(document).trigger('thrust');
+        console.log('up keydown');
+        break;
+
       case down:  $(document).trigger('down');   break;
       case left:  $(document).trigger('left');   break;
       case right: $(document).trigger('right');  break;
     }
+  }
 
+  $(document).one('keydown', onKeydown);
+
+  $(document).on('keyup', ev => {
+
+    let space = 32;
+
+    if (space === ev.keyCode) {
+      console.log('up keyup');
+      $(document).trigger('gravity');
+      $(document).one('keydown', onKeydown);
+    }
   });
 
 })();
