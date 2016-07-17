@@ -128,8 +128,17 @@ let Sketch = function() {
 
     let positionX = 0;
     let offsetX = 0;
-    self.yMapUpperLimit = height/1.5;
-    self.maxOffsetY = -30;
+
+    self.tunnelLimits = new function() {
+      let self = this;
+      this.update = function(multiplier = 0.35) {
+        self.lower = height * multiplier;
+        self.upper = height * (1 - multiplier);
+      };
+      this.update();
+    }();
+
+    self.maxOffsetY = 30;
     self.reactsToBass = true;
     self.bassReactionIsLocal = false;
     let vertices;
@@ -160,13 +169,16 @@ let Sketch = function() {
 
         let j = i + ceil(positionX/peakDistance); // must be ceil
         let x = i * peakDistance;
-        let y = map(self.peaks[j], -1, 1, 0, self.yMapUpperLimit);
+        let y = map(self.peaks[j], -1, 1, self.tunnelLimits.lower, self.tunnelLimits.upper);
 
         rawVs.push({x, y});
       };
-      // create the audio reactive and offset bounds
-      let yOffset = height/4 + (self.reactsToBass ? map(audioProperties.energy.bass, 0, 255, self.maxOffsetY, 0) : 0);
-      // let yOffsetBass = map(audioProperties.energy.bass, 0, 255, self.maxOffsetY, 0) + height/4;
+
+      let yOffset = height/4 + (
+        self.reactsToBass // create the audio reactive and offset bounds
+          ? map(audioProperties.energy.bass, 0, 255, 0, self.maxOffsetY)
+          : 0
+      );
 
       if (self.bassReactionIsLocal)
       {
@@ -202,7 +214,7 @@ let Sketch = function() {
         // lower bounds
         for (let v of rawVs.reverse()) {
           vertices.push(
-            createVector(round(v.x-offsetX), round(yOffset+v.y))
+            createVector(round(v.x-offsetX), round(v.y+yOffset))
           );
         }
       }
@@ -254,6 +266,9 @@ let Sketch = function() {
     this.getVertices = function(xPosition = 'center') {
       switch(xPosition) {
         case 'center':
+          if (!vertices) // when no sound has been analised but another object wants the vertices
+            return false;
+
           return vertices.filter(v => {
             // get the two vertices either side of the horizontal center
             return v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
@@ -264,6 +279,10 @@ let Sketch = function() {
     this.getY = function(position) {
 
       let cv = this.getVertices();
+
+      if (!cv)
+        return 0;
+
       let adj = cv[1].x - cv[0].x; // same as peakDistance but rounded
       let oppOnRight = cv[0].y > cv[1].y;
       let opp = oppOnRight ? cv[0].y - cv[1].y : cv[1].y - cv[0].y;
@@ -454,24 +473,39 @@ let Sketch = function() {
 
   let Wavy = function(orientation = 'tunnel') {
 
-    let minX, maxX, minY, maxY, prevWaves = []
+    let minX, maxX, minY, maxY, offsetBaseUnit, prevWaves = [], prevWavesLimit
       , audio = audioProperties;
 
-    if (orientation === "vertical") {
-       minX = width*.25;
-       maxX = width*.75;
+    switch(orientation) {
+      case "vertical":
+        minX = width*.25;
+        maxX = width*.75;
+        break;
+
+      case "tunnel":
+        minX = 0;
+        maxX = width*.1;
+        offsetBaseUnit = width;
+        break;
+
+      case 'horizontal':
+      case 'outer':
+        minX = 0;
+        maxX = width;
+        offsetBaseUnit = height*.2;
+        prevWavesLimit = 3;
+        break;
     }
-    else if (orientation === "tunnel") {
-      minX = 0;
-      maxX = width*.1;
-    }
+
 
     let draw = function() {
 
-
-      if (orientation === 'tunnel') {
-        minY = tunnel.getY('top');
-        maxY = tunnel.getY('bottom');
+      switch(orientation) {
+        case 'tunnel':
+        case 'outer':
+          minY = tunnel.getY('top');
+          maxY = tunnel.getY('bottom');
+          break;
       }
 
       let wave = [], frameDiv = 3;
@@ -495,8 +529,13 @@ let Sketch = function() {
             break;
 
           case 'horizontal':
-            x = map(i, 0, audio.waveform.length, 0, width);
+            x = map(i, 0, audio.waveform.length, minX, maxX);
             y = map(audio.waveform[i], -1, 1, 0, height);
+            break;
+
+          case 'outer':
+            x = map(i, 0, audio.waveform.length, minX, maxX);
+            y = map(audio.waveform[i], -1, 1, minY*2, maxY/2);
             break;
         }
 
@@ -520,15 +559,41 @@ let Sketch = function() {
 
         for (let j=0; j<prevWaves.length; j++)
         {
-          let offset = ((j+1)*Math.round((width/fr)*frameDiv));
+          let offset = ((j+1) * Math.round((offsetBaseUnit/fr)*frameDiv));
           beginShape();
           stroke(255-offset); // waveform is progressive shades away from white
 
           for (let k=0; k<prevWaves[j].length; k++)
           {
-            vertex(prevWaves[j][k].x-offset, prevWaves[j][k].y);
+            switch(orientation) {
+              case 'tunnel':
+              case 'vertical':
+                vertex(prevWaves[j][k].x-offset, prevWaves[j][k].y);
+                break;
+
+              case 'horizontal':
+                vertex(prevWaves[j][k].x, prevWaves[j][k].y-minY-offset);
+                break;
+
+              case 'outer':
+                vertex(prevWaves[j][k].x, prevWaves[j][k].y-((maxY-minY)/2)-offset);
+                break;
+            }
+
           }
           endShape();
+
+          if (orientation === 'outer') {
+            beginShape();
+            stroke(255-offset);
+            for (let k=0; k<prevWaves[j].length; k++) {
+              vertex(prevWaves[j][k].x, prevWaves[j][k].y+((maxY-minY)/2)+offset);
+            }
+            endShape();
+          }
+
+          if (j+1 === prevWavesLimit)
+            return;
         }
       }
     };
@@ -688,9 +753,7 @@ let hit = false;
   };
 
   window.setup = function() {
-
     // collideDebug(true);
-
     frameRate(fr);
     cnv = createCanvas(600, 400); //windowWidth, windowHeight
 /*
@@ -707,12 +770,12 @@ let hit = false;
     audioProperties = new AudioProperties();
 
     tunnel = new TunnelManager(sound, sketchSettings);
+    waveform = new Wavy('outer');
     player = new PlayerManager();
     uiControls = new UIControls();
-    waveform = new Wavy();
 
     drawQueue = [ // ordering matters will decide the z-index
-      tunnel, player, uiControls, waveform
+      waveform, tunnel, player, uiControls
     ];
 
     // particles = new VectorParticles(circleWave);
@@ -817,7 +880,7 @@ let hit = false;
       this.object.updateValues();
     });
 
-    gui.add(tunnel, 'yMapUpperLimit', 0, 1000);
+    // gui.add(tunnel, 'tunnelLimits', 0, 1000);
     gui.add(tunnel, 'maxOffsetY', -30, 30);
     gui.add(tunnel, 'reactsToBass');
     gui.add(player, 'maxDiameter', 0, 100);
