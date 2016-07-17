@@ -1,11 +1,13 @@
 let Sketch = function() {
 
   let self = this;
+  let sketchSettings = {
+    peaksPerScreen: 3,
+    peaksPerScreenBuffer: 2
+  };
   let fr = 60;
   let SPEED = 1;
-  let peaksPerScreen = 3;
-  let peaksPerScreenBuffer = 2;
-  let bins = 256;
+  let bins = 128;
   let sound
     , fft
     , cnv
@@ -68,7 +70,7 @@ let Sketch = function() {
     // sound is contructed before this instance is created
 
     let self = this;
-        self.peakHeightMultiplier = -30;
+        self.peakHeightMultiplier = +20;
 
     let paddingX = 100
       , duration = sound.duration()
@@ -76,7 +78,7 @@ let Sketch = function() {
           length: width, //width-paddingX*2,
           lengthToPeakRatio: Math.ceil(tunnel.peaks.length/this.length),
           x: 0, //paddingX,
-          y: peaksAreMirrored ? height + self.peakHeightMultiplier : height
+          y: peaksAreMirrored ? 0 + self.peakHeightMultiplier : 0
       }
       , ph = { // playhead
           x: track.x,
@@ -98,8 +100,10 @@ let Sketch = function() {
       for (let i=0; i<track.length; i++) {
 
         let x = track.x+i;
-        let y1 = track.y+tunnel.peaks[i]*self.peakHeightMultiplier;
-        let y2 = track.y+tunnel.peaks[i]*-self.peakHeightMultiplier;
+        let multiplier = x < ph.x && x > ph.x-9 ? 10+(x-ph.x)
+          : x < ph.x ? 1 : 0.05;
+        let y1 = track.y + tunnel.peaks[i] * (multiplier*self.peakHeightMultiplier);
+        // let y2 = track.y + tunnel.peaks[i] * -self.peakHeightMultiplier;
 
         stroke( x < ph.x ? 255 : 0 );
         strokeWeight(1);
@@ -112,11 +116,12 @@ let Sketch = function() {
     }
   };
 
-  let TunnelManager = function(sound, peaksPerScreen, secondsPerScreen) { // t::todo convert to a class (fun, nth)
+  let TunnelManager = function(sound, settings) { // t::todo convert to a class (fun, nth)
 
     let self = this;
+    let s = settings;
     let waveWidth = Math.round(sound.duration() * width);
-    let peakDistance = Math.round(width/peaksPerScreen);
+    let peakDistance = Math.round(width/settings.peaksPerScreen);
     let frameDistance = Math.round(width/fr);
     let peakResolution = sound.duration() * 4; // t::todo needs to account for parts of a second
     self.peaks = sound.getPeaks(peakResolution); // waveform for full audio <- add resolution here
@@ -125,11 +130,23 @@ let Sketch = function() {
     let offsetX = 0;
     self.yMapUpperLimit = height/1.5;
     self.maxOffsetY = -30;
+    self.reactsToBass = true;
+    self.bassReactionIsLocal = false;
     let vertices;
+
+    let updateValues = function() {
+      waveWidth = Math.round(sound.duration() * width);
+      peakDistance = Math.round(width/settings.peaksPerScreen);
+      frameDistance = Math.round(width/fr);
+    };
+
+    settings.updateValues = function() {
+      updateValues();
+    };
 
     this.onOrientationChange = function() { // not begin used so far
       waveWidth = Math.round(sound.duration() * width);
-      peakDistance = width / peaksPerScreen;
+      peakDistance = width / settings.peaksPerScreen;
       frameDistance = width / fr;
     };
 
@@ -139,7 +156,7 @@ let Sketch = function() {
       vertices = [];
 
       // get the raw vertices
-      for (let i=0; i < peaksPerScreen+peaksPerScreenBuffer; i++) {
+      for (let i=0; i < settings.peaksPerScreen+settings.peaksPerScreenBuffer; i++) {
 
         let j = i + ceil(positionX/peakDistance); // must be ceil
         let x = i * peakDistance;
@@ -148,20 +165,46 @@ let Sketch = function() {
         rawVs.push({x, y});
       };
       // create the audio reactive and offset bounds
-      let yOffset = map(audioProperties.energy.bass, 0, 255, self.maxOffsetY, 0) + height/4;
-      // let yOffset = height/4; // no audio offset
+      let yOffset = height/4 + (self.reactsToBass ? map(audioProperties.energy.bass, 0, 255, self.maxOffsetY, 0) : 0);
+      // let yOffsetBass = map(audioProperties.energy.bass, 0, 255, self.maxOffsetY, 0) + height/4;
 
-      // upper bounds
-      for (let v of rawVs) {
-        vertices.push(
-          createVector(round(v.x-offsetX), round(v.y-yOffset))
-        );
+      if (self.bassReactionIsLocal)
+      {
+        // upper bounds
+        for (let v of rawVs) {
+          let isAroundCenter = v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
+          vertices.push(
+            createVector(
+              round(v.x-offsetX),
+              round(isAroundCenter ? v.y-yOffsetBass : v.y-yOffset)
+            )
+          );
+        }
+        // lower bounds
+        for (let v of rawVs.reverse()) {
+          let isAroundCenter = v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
+          vertices.push(
+            createVector(
+              round(v.x-offsetX),
+              round(isAroundCenter ? yOffsetBass+v.y : v.y+yOffset)
+            )
+          );
+        }
       }
-      // lower bounds
-      for (let v of rawVs.reverse()) {
-        vertices.push(
-          createVector(round(v.x-offsetX), round(yOffset+v.y))
-        );
+      else
+      {
+        // upper bounds
+        for (let v of rawVs) {
+          vertices.push(
+            createVector(round(v.x-offsetX), round(v.y-yOffset))
+          );
+        }
+        // lower bounds
+        for (let v of rawVs.reverse()) {
+          vertices.push(
+            createVector(round(v.x-offsetX), round(yOffset+v.y))
+          );
+        }
       }
 
       self.vertices = vertices;
@@ -199,7 +242,7 @@ let Sketch = function() {
 
       beginShape();
       fill(themes.active.bg);
-      stroke(themes.active.bg);
+      stroke(255 - sound.getVolume() * 255);
       strokeWeight(1);
 
       for (let v of vertices) {
@@ -208,12 +251,19 @@ let Sketch = function() {
       endShape();
     };
 
+    this.getVertices = function(xPosition = 'center') {
+      switch(xPosition) {
+        case 'center':
+          return vertices.filter(v => {
+            // get the two vertices either side of the horizontal center
+            return v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
+          });
+      }
+    };
+
     this.getY = function(position) {
 
-      let cv = vertices.filter(v => {
-        // get the two vertices either side of the horizontal center
-        return v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
-      });
+      let cv = this.getVertices();
       let adj = cv[1].x - cv[0].x; // same as peakDistance but rounded
       let oppOnRight = cv[0].y > cv[1].y;
       let opp = oppOnRight ? cv[0].y - cv[1].y : cv[1].y - cv[0].y;
@@ -656,7 +706,7 @@ let hit = false;
 
     audioProperties = new AudioProperties();
 
-    tunnel = new TunnelManager(sound, peaksPerScreen, SPEED);
+    tunnel = new TunnelManager(sound, sketchSettings);
     player = new PlayerManager();
     uiControls = new UIControls();
     waveform = new Wavy();
@@ -693,9 +743,18 @@ let hit = false;
       audioProperties.update();
 
     // background(themes.active.wall);
-    background([
-      audioProperties.energy.bass, audioProperties.energy.mid, audioProperties.energy.treble
-    ]);
+    if (player.mode === 'recovering' || player.mode === 'limbo') {
+      var volume = sound.getVolume()
+        , red = Math.floor(audioProperties.energy.bass*volume)
+        , green = Math.floor(audioProperties.energy.mid*volume)
+        , blue = Math.floor(audioProperties.energy.treble*volume);
+      background([red, green, blue]);
+    }
+    else {
+      background([
+        audioProperties.energy.bass, audioProperties.energy.mid, audioProperties.energy.treble
+      ]);
+    }
 
     drawQueue.forEach(ob => { ob.draw(); });
     hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
@@ -703,6 +762,7 @@ let hit = false;
 
     if (hit/* && player.mode !== 'pause'*/) {
       // togglePlay('pause');
+      background([0,0,0]);
       player.mode = 'reset';
     }
 
@@ -751,8 +811,15 @@ let hit = false;
 
   let initDatGUI = function() {
     let gui = new dat.GUI();
+    let controller = gui.add(sketchSettings, 'peaksPerScreen', 2, 10).step(1);
+
+    controller.onFinishChange(function(value) {
+      this.object.updateValues();
+    });
+
     gui.add(tunnel, 'yMapUpperLimit', 0, 1000);
     gui.add(tunnel, 'maxOffsetY', -30, 30);
+    gui.add(tunnel, 'reactsToBass');
     gui.add(player, 'maxDiameter', 0, 100);
     gui.add(player, 'minDiameter', 0, 100);
     gui.add(uiControls, 'peakHeightMultiplier', -100, 100);

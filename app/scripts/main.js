@@ -111,14 +111,14 @@ let handleFileSelect = function(ev) {
 
   if (audioUrls.length > 0) {
     audioPlayer = new FSAudioManager(audioUrls);
-    sketch = new Sketch();
+    window.sketch = new Sketch();
   }
 };
 
 document.querySelector('.js-files').addEventListener('change', handleFileSelect, false);
 document.querySelector('.js-use-local').addEventListener('click', function(ev) {
   audioPlayer = new LocalAudioManager();
-  sketch = new Sketch();
+  window.sketch = new Sketch();
 });
 
 let dom = function() {
@@ -166,7 +166,7 @@ dom.$connectSoundcloud.on("click", function() {
     // console.log(pl.tracks);
 
     audioPlayer = new SoundcloudManager(pl.tracks);
-    sketch = new Sketch();
+    window.sketch = new Sketch();
   });
 });
 
@@ -244,4 +244,3 @@ dom.$waveContainer.css({
 
 
 // Need a mobile on tap binding
-
