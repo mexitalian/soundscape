@@ -19,7 +19,9 @@ let Sketch = function() {
     , satellites = {}
     , audioProperties
     , uiControls
-    , drawQueue;
+    , drawQueue
+    , startMillis
+    ;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
 
   let center = {};
@@ -131,11 +133,16 @@ let Sketch = function() {
 
     self.tunnelLimits = new function() {
       let self = this;
-      this.update = function(multiplier = 0.35) {
-        self.lower = height * multiplier;
-        self.upper = height * (1 - multiplier);
+      self.multiplier = 0.30;
+      self.offset = height*.25;
+      self.update = function() {
+        self.lower = round(height * self.multiplier);
+        self.upper = round(height * (1 - self.multiplier));
       };
-      this.update();
+      self.reset = function() {
+        self.offset = height*.25;
+      }
+      self.update();
     }();
 
     self.maxOffsetY = 30;
@@ -161,8 +168,14 @@ let Sketch = function() {
 
     let updateVertices = function() {
 
+      if (frameCount%(fr/2) === 0)
+        self.tunnelLimits.offset = self.tunnelLimits.offset + 1;
+
       let rawVs = [];
       vertices = [];
+      let yOffset = (!self.reactsToBass)
+        ? self.tunnelLimits.offset
+        : self.tunnelLimits.offset + round(map(audioProperties.energy.bass, 0, 255, 0, self.maxOffsetY));
 
       // get the raw vertices
       for (let i=0; i < settings.peaksPerScreen+settings.peaksPerScreenBuffer; i++) {
@@ -174,50 +187,44 @@ let Sketch = function() {
         rawVs.push({x, y});
       };
 
-      let yOffset = height/4 + (
-        self.reactsToBass // create the audio reactive and offset bounds
-          ? map(audioProperties.energy.bass, 0, 255, 0, self.maxOffsetY)
-          : 0
-      );
-
-      if (self.bassReactionIsLocal)
-      {
-        // upper bounds
-        for (let v of rawVs) {
-          let isAroundCenter = v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
-          vertices.push(
-            createVector(
-              round(v.x-offsetX),
-              round(isAroundCenter ? v.y-yOffsetBass : v.y-yOffset)
-            )
-          );
-        }
-        // lower bounds
-        for (let v of rawVs.reverse()) {
-          let isAroundCenter = v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
-          vertices.push(
-            createVector(
-              round(v.x-offsetX),
-              round(isAroundCenter ? yOffsetBass+v.y : v.y+yOffset)
-            )
-          );
-        }
-      }
-      else
-      {
+      // if (self.bassReactionIsLocal)
+      // {
+      //   // upper bounds
+      //   for (let v of rawVs) {
+      //     let isAroundCenter = v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
+      //     vertices.push(
+      //       createVector(
+      //         round(v.x-offsetX),
+      //         round(isAroundCenter ? v.y-yOffsetBass : v.y-yOffset)
+      //       )
+      //     );
+      //   }
+      //   // lower bounds
+      //   for (let v of rawVs.reverse()) {
+      //     let isAroundCenter = v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
+      //     vertices.push(
+      //       createVector(
+      //         round(v.x-offsetX),
+      //         round(isAroundCenter ? yOffsetBass+v.y : v.y+yOffset)
+      //       )
+      //     );
+      //   }
+      // }
+      // else
+      // {
         // upper bounds
         for (let v of rawVs) {
           vertices.push(
-            createVector(round(v.x-offsetX), round(v.y-yOffset))
+            createVector(round(v.x-offsetX), v.y-yOffset)
           );
         }
         // lower bounds
         for (let v of rawVs.reverse()) {
           vertices.push(
-            createVector(round(v.x-offsetX), round(v.y+yOffset))
+            createVector(round(v.x-offsetX), v.y+yOffset)
           );
         }
-      }
+      // }
 
       self.vertices = vertices;
       // t::todo put this line in
@@ -827,6 +834,7 @@ let hit = false;
       // togglePlay('pause');
       background([0,0,0]);
       player.mode = 'reset';
+      tunnel.tunnelLimits.reset();
     }
 
   };
@@ -880,7 +888,7 @@ let hit = false;
       this.object.updateValues();
     });
 
-    // gui.add(tunnel, 'tunnelLimits', 0, 1000);
+    // gui.add(tunnel, 'tunnelLimits', 0.1, 0.9);
     gui.add(tunnel, 'maxOffsetY', -30, 30);
     gui.add(tunnel, 'reactsToBass');
     gui.add(player, 'maxDiameter', 0, 100);
