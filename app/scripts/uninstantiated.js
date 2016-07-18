@@ -582,48 +582,57 @@ let Sketch = function() {
       if (frameCount%frameDiv === 0)
         prevWaves.unshift(wave);
 
-      if (prevWaves.length > player.minDiameter-1) {
+      if (prevWaves.length > 5)
         prevWaves.pop();
-      }
 
       if (prevWaves.length > 0) {
+
+        let offsetUnit = round(offsetBaseUnit / (fr/frameDiv));
 
         noFill();
         strokeWeight(self.waveWeight);
 
         for (let j=0; j<prevWaves.length; j++)
         {
-          let offset = (j+1) * round(offsetBaseUnit / (fr/frameDiv) );
-          beginShape();
-          stroke( orientation === 'outer' ? [255, offset] : 255-offset); // waveform is progressive shades away from white
+          let offset = ((j+1) * offsetUnit);
+          let strokeColor = orientation === 'outer' ? [255, offset] : 255-offset;
 
-          for (let k=0; k<prevWaves[j].length; k++)
-          {
+          beginShape();
+          stroke(strokeColor); // waveform is progressive shades away from white
+
+          for (
+            let k=0;
+            k < prevWaves[j].length;
+            k += self.waveWeight > 1 ? 16 : 4
+          ) {
             switch(orientation) {
               case 'tunnel':
               case 'vertical':
-                vertex(prevWaves[j][k].x-offset, prevWaves[j][k].y);
-                break;
+              vertex(prevWaves[j][k].x-offset, prevWaves[j][k].y);
+              break;
 
               case 'horizontal':
-                vertex(prevWaves[j][k].x, prevWaves[j][k].y-minY-offset);
-                break;
+              vertex(prevWaves[j][k].x, prevWaves[j][k].y-minY-offset);
+              break;
 
               case 'outer':
-                vertex(
-                  prevWaves[j][k].x,
-                  prevWaves[j][k].y - minY - offset
-                );
-                break;
+              vertex(
+                prevWaves[j][k].x,
+                prevWaves[j][k].y - minY - offset
+              );
+              break;
             }
-
           }
           endShape();
 
           if (orientation === 'outer') {
             beginShape();
-            stroke( orientation === 'outer' ? [255, offset] : 255-offset);
-            for (let l=0; l<prevWaves[j].length; l++) {
+            stroke(strokeColor);
+            for (
+              let l=0;
+              l < prevWaves[j].length;
+              l += self.waveWeight > 1 ? 16 : 4
+            ) {
               vertex(
                 prevWaves[j][l].x,
                 prevWaves[j][l].y + minY + offset
@@ -631,7 +640,7 @@ let Sketch = function() {
             }
             endShape();
           }
-          // decide how many waveforms to display depending on the tunnel growth
+          // how many waveforms to display depends on tunnel growth
           if (tunnel.tunnelLimits.getGrowth()/5 < j+1)
             return;
         }
@@ -816,7 +825,7 @@ let hit = false;
     satellites.first = new Satellite(player, {freq: 'treble'});
 
     drawQ = [ // ordering matters will decide the stacking
-      waveform, tunnel, player, uiControls, satellites.first
+      waveform, tunnel, player, satellites.first//, uiControls
     ];
 
     // particles = new VectorParticles(circleWave);
