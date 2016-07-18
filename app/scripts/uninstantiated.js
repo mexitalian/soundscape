@@ -130,17 +130,23 @@ let Sketch = function() {
 
     let positionX = 0;
     let offsetX = 0;
+    let offsetY;
 
     self.tunnelLimits = new function() {
       let self = this;
+      let offset = height*.10
+      self.offset = offset;
       self.multiplier = 0.30;
-      self.offset = height*.25;
       self.update = function() {
+        // these are the extremes used to map the peak values to
         self.lower = round(height * self.multiplier);
         self.upper = round(height * (1 - self.multiplier));
       };
       self.reset = function() {
-        self.offset = height*.25;
+        self.offset = offset;
+      }
+      self.getGrowth = function() {
+        return self.offset - offset;
       }
       self.update();
     }();
@@ -168,12 +174,12 @@ let Sketch = function() {
 
     let updateVertices = function() {
 
-      if (frameCount%(fr/2) === 0)
-        self.tunnelLimits.offset = self.tunnelLimits.offset + 1;
+      if (frameCount%(fr) === 0 && player.mode != 'limbo')
+        self.tunnelLimits.offset++;
 
       let rawVs = [];
       vertices = [];
-      let yOffset = (!self.reactsToBass)
+      offsetY = (!self.reactsToBass)
         ? self.tunnelLimits.offset
         : self.tunnelLimits.offset + round(map(audioProperties.energy.bass, 0, 255, 0, self.maxOffsetY));
 
@@ -195,7 +201,7 @@ let Sketch = function() {
       //     vertices.push(
       //       createVector(
       //         round(v.x-offsetX),
-      //         round(isAroundCenter ? v.y-yOffsetBass : v.y-yOffset)
+      //         round(isAroundCenter ? v.y-yOffsetBass : v.y-offsetY)
       //       )
       //     );
       //   }
@@ -205,7 +211,7 @@ let Sketch = function() {
       //     vertices.push(
       //       createVector(
       //         round(v.x-offsetX),
-      //         round(isAroundCenter ? yOffsetBass+v.y : v.y+yOffset)
+      //         round(isAroundCenter ? yOffsetBass+v.y : v.y+offsetY)
       //       )
       //     );
       //   }
@@ -215,13 +221,13 @@ let Sketch = function() {
         // upper bounds
         for (let v of rawVs) {
           vertices.push(
-            createVector(round(v.x-offsetX), v.y-yOffset)
+            createVector(round(v.x-offsetX), v.y-offsetY)
           );
         }
         // lower bounds
         for (let v of rawVs.reverse()) {
           vertices.push(
-            createVector(round(v.x-offsetX), v.y+yOffset)
+            createVector(round(v.x-offsetX), v.y+offsetY)
           );
         }
       // }
@@ -304,10 +310,10 @@ let Sketch = function() {
           return y;
 
         case 'bottom':
-          return y + height/2; // the distance between top and bottom
+          return y + offsetY*2; // the distance between top and bottom
 
         case 'center':
-          return y + height/4; // by the half distance between top and bottom
+          return y + offsetY; // by the half distance between top and bottom
       }
     };
 
@@ -480,7 +486,7 @@ let Sketch = function() {
 
   let Wavy = function(orientation = 'tunnel') {
 
-    let minX, maxX, minY, maxY, offsetBaseUnit, prevWaves = [], prevWavesLimit
+    let minX, maxX, minY, maxY, offsetBaseUnit, prevWaves = []
       , audio = audioProperties;
 
     switch(orientation) {
@@ -499,8 +505,7 @@ let Sketch = function() {
       case 'outer':
         minX = 0;
         maxX = width;
-        offsetBaseUnit = height*.2;
-        prevWavesLimit = 3;
+        offsetBaseUnit = height;
         break;
     }
 
@@ -542,14 +547,13 @@ let Sketch = function() {
 
           case 'outer':
             x = map(i, 0, audio.waveform.length, minX, maxX);
-            y = map(audio.waveform[i], -1, 1, minY*2, maxY/2);
+            y = map(audio.waveform[i], -1, 1, minY, maxY);
             break;
         }
 
         vertex(x,y);
         wave.push({x,y});
       }
-
       endShape();
 
       if (frameCount%frameDiv === 0)
@@ -566,9 +570,9 @@ let Sketch = function() {
 
         for (let j=0; j<prevWaves.length; j++)
         {
-          let offset = ((j+1) * Math.round((offsetBaseUnit/fr)*frameDiv));
+          let offset = (j+1) * round(offsetBaseUnit / (fr/frameDiv) );
           beginShape();
-          stroke(255-offset); // waveform is progressive shades away from white
+          stroke( orientation === 'outer' ? [0, 155-offset] : 255-offset); // waveform is progressive shades away from white
 
           for (let k=0; k<prevWaves[j].length; k++)
           {
@@ -583,7 +587,10 @@ let Sketch = function() {
                 break;
 
               case 'outer':
-                vertex(prevWaves[j][k].x, prevWaves[j][k].y-((maxY-minY)/2)-offset);
+                vertex(
+                  prevWaves[j][k].x,
+                  prevWaves[j][k].y - minY - offset
+                );
                 break;
             }
 
@@ -592,14 +599,17 @@ let Sketch = function() {
 
           if (orientation === 'outer') {
             beginShape();
-            stroke(255-offset);
-            for (let k=0; k<prevWaves[j].length; k++) {
-              vertex(prevWaves[j][k].x, prevWaves[j][k].y+((maxY-minY)/2)+offset);
+            stroke( orientation === 'outer' ? [0, 155-offset] : 255-offset);
+            for (let l=0; l<prevWaves[j].length; l++) {
+              vertex(
+                prevWaves[j][l].x,
+                prevWaves[j][l].y + minY + offset
+              );
             }
             endShape();
           }
-
-          if (j+1 === prevWavesLimit)
+          // decide how many waveforms to display depending on the tunnel growth
+          if (tunnel.tunnelLimits.getGrowth()/5 < j+1)
             return;
         }
       }
