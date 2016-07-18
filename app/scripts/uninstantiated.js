@@ -19,7 +19,7 @@ let Sketch = function() {
     , satellites = {}
     , audioProperties
     , uiControls
-    , drawQueue
+    , drawQ
     , startMillis
     ;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
@@ -34,17 +34,29 @@ let Sketch = function() {
     classic: {
       bg: [0], // blick
       wall: [102,255,102] // green
-    }/*,
+    },
     dynamic: {
-      bg: [0,0,0],
-      wall: [
-        audioProperties.bass,
-        audioProperties.mid,
-        audioProperties.treble
-      ]
-    }*/
+      bg: [0],
+      wall: function() {
+        let v = sound.getVolume();
+        if (player.mode === 'recovering' || player.mode === 'limbo') {
+          return [
+            floor(audioProperties.energy.bass * v),
+            floor(audioProperties.energy.mid * v),
+            floor(audioProperties.energy.treble * v),
+          ];
+        }
+        else {
+          return [
+            audioProperties.energy.bass,
+            audioProperties.energy.mid,
+            audioProperties.energy.treble
+          ];
+        }
+      }
+    }
   };
-  themes.active = themes.classic;
+  themes.active = themes.dynamic;
 
   /*
     Get the FFT spectrum, energies, waveform into a central location
@@ -323,27 +335,33 @@ let Sketch = function() {
     // }
   };
 
-  let Satellite = function(planet, frequency = "bass", diameter = 40, maxOrbitDistance = 120, fftValues = audioProperties) {
+  let Satellite = function(planet, options) {
 
+    let self = this;
+    let defaults = {
+      freq: 'bass'//,
+      // maxDiameter: planet.radius,
+      // maxOrbit: planet.radius * 3
+    };
+    let s = $.extend({}, defaults, options); // settings
     // fuck you internal critic, I'll be a baillerina
-    let degree = 360/fr/(frequency === "bass" ? 2 : 1);
+    let degree = 360/fr/(s.freq === "bass" ? 2 : 1);
     let radian = radians(degree); // the increment around the circle in radians
     let x = this.x;
     let y = this.y;
-    let newDiameter;
-    let self = this;
-
-    this.radius;
+    let diameter;
+    let audio = audioProperties;
 
     let updateDiameter = function() {
-      newDiameter = map(fftValues.energy[frequency], 0, 255, 0, diameter);
-      self.radius = newDiameter/2;
+      diameter = map(audio.energy[s.freq], 0, 255, 0, planet.radius);
+      self.radius = diameter/2;
     };
 
     let updateCoords = function() {
       //  give me back the progression around the circle every frame
-      let i = frameCount % (fr*(frequency === "bass" ? 2 : 1));
-      let hypotenuse = planet.radius + map(fftValues.energy[frequency], 0, 255, diameter, maxOrbitDistance);
+      let i = frameCount % (fr*(s.freq === "bass" ? 2 : 1));
+      let hypotenuse = planet.radius + map(audio.energy[s.freq], 0, 255, 0, planet.radius*6); // able to drop into the planet
+      // let hypotenuse = planet.radius + map(audio.energy[s.freq], 0, 255, diameter, s.maxOrbit); // giving min planets diameter
 
       switch (i*degree) {
         case 0:
@@ -378,8 +396,9 @@ let Sketch = function() {
     this.draw = function() {
       updateCoords();
       updateDiameter();
-      fill(255);
-      ellipse(x, y, newDiameter, newDiameter);
+      noStroke(0);
+      fill(themes.active.wall());
+      ellipse(x, y, diameter, diameter);
     };
   };
 
@@ -471,6 +490,7 @@ let Sketch = function() {
       self.x = x;
       self.y = y;
       self.diameter = diameter;
+      self.radius = diameter/2;
     };
 
     this.draw = function() {
@@ -793,9 +813,10 @@ let hit = false;
     waveform = new Wavy('outer');
     player = new PlayerManager();
     uiControls = new UIControls();
+    satellites.first = new Satellite(player, {freq: 'treble'});
 
-    drawQueue = [ // ordering matters will decide the z-index
-      waveform, tunnel, player, uiControls
+    drawQ = [ // ordering matters will decide the stacking
+      waveform, tunnel, player, uiControls, satellites.first
     ];
 
     // particles = new VectorParticles(circleWave);
@@ -826,20 +847,9 @@ let hit = false;
       audioProperties.update();
 
     // background(themes.active.wall);
-    if (player.mode === 'recovering' || player.mode === 'limbo') {
-      var volume = sound.getVolume()
-        , red = Math.floor(audioProperties.energy.bass*volume)
-        , green = Math.floor(audioProperties.energy.mid*volume)
-        , blue = Math.floor(audioProperties.energy.treble*volume);
-      background([red, green, blue]);
-    }
-    else {
-      background([
-        audioProperties.energy.bass, audioProperties.energy.mid, audioProperties.energy.treble
-      ]);
-    }
+    background(themes.dynamic.wall());
 
-    drawQueue.forEach(ob => { ob.draw(); });
+    drawQ.forEach(ob => { ob.draw(); });
     hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
     // print("colliding? " + hit);
 
