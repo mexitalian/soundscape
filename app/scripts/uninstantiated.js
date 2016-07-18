@@ -487,7 +487,10 @@ let Sketch = function() {
   let Wavy = function(orientation = 'tunnel') {
 
     let minX, maxX, minY, maxY, offsetBaseUnit, prevWaves = []
+      , self = this
       , audio = audioProperties;
+
+    this.waveWeight = 1;
 
     switch(orientation) {
       case "vertical":
@@ -510,7 +513,7 @@ let Sketch = function() {
     }
 
 
-    let draw = function() {
+    this.draw = function() {
 
       switch(orientation) {
         case 'tunnel':
@@ -566,13 +569,13 @@ let Sketch = function() {
       if (prevWaves.length > 0) {
 
         noFill();
-        strokeWeight(1);
+        strokeWeight(self.waveWeight);
 
         for (let j=0; j<prevWaves.length; j++)
         {
           let offset = (j+1) * round(offsetBaseUnit / (fr/frameDiv) );
           beginShape();
-          stroke( orientation === 'outer' ? [0, 155-offset] : 255-offset); // waveform is progressive shades away from white
+          stroke( orientation === 'outer' ? [255, offset] : 255-offset); // waveform is progressive shades away from white
 
           for (let k=0; k<prevWaves[j].length; k++)
           {
@@ -599,7 +602,7 @@ let Sketch = function() {
 
           if (orientation === 'outer') {
             beginShape();
-            stroke( orientation === 'outer' ? [0, 155-offset] : 255-offset);
+            stroke( orientation === 'outer' ? [255, offset] : 255-offset);
             for (let l=0; l<prevWaves[j].length; l++) {
               vertex(
                 prevWaves[j][l].x,
@@ -615,7 +618,7 @@ let Sketch = function() {
       }
     };
 
-    return { draw };
+    // return { draw, waveWeight };
   };
 
 
@@ -898,6 +901,7 @@ let hit = false;
       this.object.updateValues();
     });
 
+    gui.add(waveform, 'waveWeight', 1, 100).step(1);
     // gui.add(tunnel, 'tunnelLimits', 0.1, 0.9);
     gui.add(tunnel, 'maxOffsetY', -30, 30);
     gui.add(tunnel, 'reactsToBass');
