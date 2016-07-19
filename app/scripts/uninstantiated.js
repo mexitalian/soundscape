@@ -28,31 +28,42 @@ let Sketch = function() {
   let themes = {
     active: undefined, // to be assigned the active theme values
     soviet: {
+      name: 'soviet',
       bg: [0,0,0],
       wall: [255,0,0]
     },
     classic: {
+      name: 'classic',
       bg: [0], // blick
       wall: [102,255,102] // green
     },
     dynamic: {
+      name: 'dynamic',
+      repaintBg: false,
       bg: [0],
-      wall: function() {
+      wall: [0], // just to begin set to black
+      // hsl: {
+      //   wall: [0,0,0] // just to begin set to black
+      // },
+      update: function() {
         let v = sound.getVolume();
+        let wall;
         if (player.mode === 'recovering' || player.mode === 'limbo') {
-          return [
+          wall = [
             floor(audioProperties.energy.bass * v),
             floor(audioProperties.energy.mid * v),
             floor(audioProperties.energy.treble * v),
           ];
         }
         else {
-          return [
+          wall = [
             audioProperties.energy.bass,
             audioProperties.energy.mid,
             audioProperties.energy.treble
           ];
         }
+        this.wall = wall;
+        // this.hsl.wall = [hue(wall), saturation(wall), lightness(wall)];
       }
     }
   };
@@ -397,7 +408,7 @@ let Sketch = function() {
       updateCoords();
       updateDiameter();
       noStroke(0);
-      fill(themes.active.wall());
+      fill(themes.active.wall);
       ellipse(x, y, diameter, diameter);
     };
   };
@@ -506,7 +517,9 @@ let Sketch = function() {
 
   let Wavy = function(orientation = 'tunnel') {
 
-    let minX, maxX, minY, maxY, offsetBaseUnit, prevWaves = []
+    let minX, maxX, minY, maxY, offsetBaseUnit
+      , prevWaves = []
+      , prevColors = []
       , self = this
       , audio = audioProperties;
 
@@ -545,9 +558,11 @@ let Sketch = function() {
 
       let wave = [], frameDiv = 3;
 
-      beginShape();
-      noFill();
-      stroke(255); // waveform is white
+      if (orientation !== 'outer') {
+        beginShape();
+        noFill();
+        stroke(255); // waveform is white
+      }
 
       for (let i = 0; i< audio.waveform.length; i++)
       {
@@ -573,17 +588,22 @@ let Sketch = function() {
             y = map(audio.waveform[i], -1, 1, minY, maxY);
             break;
         }
-
-        vertex(x,y);
+        if (orientation !== 'outer')
+          vertex(x,y);
         wave.push({x,y});
       }
-      endShape();
+      if (orientation !== 'outer')
+        endShape();
 
-      if (frameCount%frameDiv === 0)
+      if (frameCount%frameDiv === 0) {
         prevWaves.unshift(wave);
+        prevColors.unshift(themes.active.wall);
+      }
 
-      if (prevWaves.length > 5)
+      if (prevWaves.length > 5) {
         prevWaves.pop();
+        prevColors.pop();
+      }
 
       if (prevWaves.length > 0) {
 
@@ -591,12 +611,25 @@ let Sketch = function() {
 
         noFill();
         strokeWeight(self.waveWeight);
+        strokeCap(PROJECT);
 
         for (let j=0; j<prevWaves.length; j++)
         {
-          let offset = ((j+1) * offsetUnit);
-          let strokeColor = orientation === 'outer' ? [255, offset] : 255-offset;
+          let multi = j+1
+          let offset = multi * offsetUnit + (self.waveWeight > 1 ? multi * (self.waveWeight*0.4) : 0);
+          // let strokeColor = orientation === 'outer' ? [255, offset] : 255-offset;
+          let strokeColor = (orientation !== 'outer') ? 255-offset : prevColors[j];
 
+          if(orientation === 'outer') {
+            // NOTE couldn't figure out the color mode properties
+            // colorMode(HSL);
+            // strokeColor = color(
+            //   themes.active.hsl.wall[0],
+            //   themes.active.hsl.wall[1] - j*10,
+            //   themes.active.hsl.wall[2] // decrease by 5% brightness
+            // );
+            // colorMode(RGB);
+          }
           beginShape();
           stroke(strokeColor); // waveform is progressive shades away from white
 
@@ -618,7 +651,7 @@ let Sketch = function() {
               case 'outer':
               vertex(
                 prevWaves[j][k].x,
-                prevWaves[j][k].y - minY - offset
+                prevWaves[j][k].y - offset
               );
               break;
             }
@@ -635,7 +668,7 @@ let Sketch = function() {
             ) {
               vertex(
                 prevWaves[j][l].x,
-                prevWaves[j][l].y + minY + offset
+                prevWaves[j][l].y + offset
               );
             }
             endShape();
@@ -852,11 +885,15 @@ let hit = false;
 
   window.draw = function() {
 
-    if (sound.isPlaying())
+    if (sound.isPlaying()) {
       audioProperties.update();
+      if (themes.active.update)
+        themes.active.update();
+    }
 
-    // background(themes.active.wall);
-    background(themes.dynamic.wall());
+    if (themes.active.repaintBg) {
+      background(themes.active.wall);
+    }
 
     drawQ.forEach(ob => { ob.draw(); });
     hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
@@ -911,7 +948,7 @@ let hit = false;
     }
   };
 
-
+  let activeTheme = themes.active;
   let initDatGUI = function() {
     let gui = new dat.GUI();
     let controller = gui.add(sketchSettings, 'peaksPerScreen', 2, 10).step(1);
@@ -920,6 +957,7 @@ let hit = false;
       this.object.updateValues();
     });
 
+    gui.add(activeTheme, 'repaintBg');
     gui.add(waveform, 'waveWeight', 1, 100).step(1);
     // gui.add(tunnel, 'tunnelLimits', 0.1, 0.9);
     gui.add(tunnel, 'maxOffsetY', -30, 30);
