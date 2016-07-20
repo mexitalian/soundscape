@@ -155,21 +155,32 @@ let Sketch = function() {
     let offsetX = 0;
     let offsetY;
 
-    self.tunnelLimits = new function() {
+    self.limits = new function() {
       let self = this;
       let offset = height*.10
+      let frameRateToIncreaseOffset = fr/3;
       self.offset = offset;
       self.multiplier = 0.30;
       self.update = function() {
         // these are the extremes used to map the peak values to
         self.lower = round(height * self.multiplier);
         self.upper = round(height * (1 - self.multiplier));
+
+        if (
+          player
+          && frameCount % frameRateToIncreaseOffset === 0
+          && player.mode != 'limbo'
+        )
+          self.offset++;
       };
       self.reset = function() {
         self.offset = offset;
-      }
+      };
       self.getGrowth = function() {
         return self.offset - offset;
+      };
+      self.keepDrawingWaves = function(i) {
+        return (self.offset - offset)/(frameRateToIncreaseOffset/2) < i;
       }
       self.update();
     }();
@@ -197,21 +208,18 @@ let Sketch = function() {
 
     let updateVertices = function() {
 
-      if (frameCount%(fr) === 0 && player.mode != 'limbo')
-        self.tunnelLimits.offset++;
-
       let rawVs = [];
       vertices = [];
       offsetY = (!self.reactsToBass)
-        ? self.tunnelLimits.offset
-        : self.tunnelLimits.offset + round(map(audioProperties.energy.bass, 0, 255, 0, self.maxOffsetY));
+        ? self.limits.offset
+        : self.limits.offset + round(map(audioProperties.energy.bass, 0, 255, 0, self.maxOffsetY));
 
       // get the raw vertices
       for (let i=0; i < settings.peaksPerScreen+settings.peaksPerScreenBuffer; i++) {
 
         let j = i + ceil(positionX/peakDistance); // must be ceil
         let x = i * peakDistance;
-        let y = map(self.peaks[j], -1, 1, self.tunnelLimits.lower, self.tunnelLimits.upper);
+        let y = map(self.peaks[j], -1, 1, self.limits.lower, self.limits.upper);
 
         rawVs.push({x, y});
       };
@@ -278,6 +286,7 @@ let Sketch = function() {
     };
 
     let updateVars = function() {
+      self.limits.update();
       updateVertices();
       updateOffsetX();
       updatePositionX();
@@ -523,7 +532,7 @@ let Sketch = function() {
       , self = this
       , audio = audioProperties;
 
-    this.waveWeight = 1;
+    self.waveWeight = 60;
 
     switch(orientation) {
       case "vertical":
@@ -636,7 +645,7 @@ let Sketch = function() {
           for (
             let k=0;
             k < prevWaves[j].length;
-            k += self.waveWeight > 1 ? 16 : 4
+            k += self.waveWeight > 1 ? 8 : 4
           ) {
             switch(orientation) {
               case 'tunnel':
@@ -664,7 +673,7 @@ let Sketch = function() {
             for (
               let l=0;
               l < prevWaves[j].length;
-              l += self.waveWeight > 1 ? 16 : 4
+              l += self.waveWeight > 1 ? 8 : 4
             ) {
               vertex(
                 prevWaves[j][l].x,
@@ -673,8 +682,8 @@ let Sketch = function() {
             }
             endShape();
           }
-          // how many waveforms to display depends on tunnel growth
-          if (tunnel.tunnelLimits.getGrowth()/5 < j+1)
+
+          if (tunnel.limits.keepDrawingWaves(j+1)) // how many waveforms to display depends on tunnel growth
             return;
         }
       }
@@ -903,7 +912,7 @@ let hit = false;
       // togglePlay('pause');
       background([0,0,0]);
       player.mode = 'reset';
-      tunnel.tunnelLimits.reset();
+      tunnel.limits.reset();
     }
 
   };
@@ -959,7 +968,7 @@ let hit = false;
 
     gui.add(activeTheme, 'repaintBg');
     gui.add(waveform, 'waveWeight', 1, 100).step(1);
-    // gui.add(tunnel, 'tunnelLimits', 0.1, 0.9);
+    // gui.add(tunnel, 'limits', 0.1, 0.9);
     gui.add(tunnel, 'maxOffsetY', -30, 30);
     gui.add(tunnel, 'reactsToBass');
     gui.add(player, 'maxDiameter', 0, 100);
