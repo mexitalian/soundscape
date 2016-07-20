@@ -645,7 +645,7 @@ let Sketch = function() {
           for (
             let k=0;
             k < prevWaves[j].length;
-            k += self.waveWeight > 1 ? 8 : 4
+            k += k===0 ? 15 : 16
           ) {
             switch(orientation) {
               case 'tunnel':
@@ -673,7 +673,8 @@ let Sketch = function() {
             for (
               let l=0;
               l < prevWaves[j].length;
-              l += self.waveWeight > 1 ? 8 : 4
+              l += l===0 ? 15 : 16 // abstract this value
+              // l += self.waveWeight > 1 ? 16 : 4 // abstract this value
             ) {
               vertex(
                 prevWaves[j][l].x,
