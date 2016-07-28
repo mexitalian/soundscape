@@ -91,54 +91,118 @@ let Sketch = function() {
     this.update();
   };
 
-  let UIControls = function(peaksAreMirrored = false) {
+  let UIControls = function(opts = {}) {
     // sound is contructed before this instance is created
-
-    let self = this;
-        self.peakHeightMultiplier = +20;
-
-    let paddingX = 100
-      , duration = sound.duration()
-      , track = {
-          length: width, //width-paddingX*2,
-          lengthToPeakRatio: Math.ceil(tunnel.peaks.length/this.length),
-          x: 0, //paddingX,
-          y: peaksAreMirrored ? 0 + self.peakHeightMultiplier : 0
+    let self = this
+      , defaults = {
+        peaksAreMirrored: false,
+        peakHeightMultiplier: 20,
+        drawCountdown: true
       }
-      , ph = { // playhead
-          x: track.x,
-          xIncr: track.length / duration,
-          updateX: function() {
-            // only update once every 250 ms
-            // can be taken out to improve smoothness, is an effort at killing overhead
-            // if (frameCount % (fr/4) !== 0) {
-            //   return;
-            // }
-            this.x = track.x + this.xIncr * sound.currentTime();
-          }
+      , s = $.extend({}, defaults, opts)
+      , drawQ = [];
+
+    self.peakHeightMultiplier = s.peakHeightMultiplier;
+
+    let waveform = function(){
+      let paddingX = 100
+        , duration = sound.duration()
+        , track = {
+            length: width, //width-paddingX*2,
+            lengthToPeakRatio: ceil(tunnel.peaks.length/width), // TODO: figure out why, was originally referenced to self this.length do not know why the scope has made "this" undefined changed
+            x: 0, //paddingX,
+            y: s.peaksAreMirrored ? 0 + self.peakHeightMultiplier : 0
+        }
+        , ph = { // playhead
+            x: track.x,
+            xIncr: track.length / duration,
+            updateX: function() {
+              // only update once every 250 ms
+              // can be taken out to improve smoothness, is an effort at killing overhead
+              // if (frameCount % (fr/4) !== 0) {
+              //   return;
+              // }
+              this.x = track.x + this.xIncr * sound.currentTime();
+            }
+        }
+        , draw = function() {
+            ph.updateX();
+
+            for (let i=0; i<track.length; i++) {
+              let x = track.x+i;
+              let multiplier = x < ph.x && x > ph.x-9 ? 10+(x-ph.x)
+                : x < ph.x ? 1 : 0.05;
+              let y1 = track.y + tunnel.peaks[i] * (multiplier*self.peakHeightMultiplier);
+              // let y2 = track.y + tunnel.peaks[i] * -self.peakHeightMultiplier;
+
+              stroke( x < ph.x ? 255 : 0 );
+              strokeWeight(1);
+              line(x, track.y, x, y1);
+
+              if (s.peaksAreMirrored)
+                line(x, y2, x, track.y);
+            }
+          };
+
+      return {draw};
+    }();
+
+    let countdown = function() {
+      let countText = ["Ready","3", "2", "1", "Go!"]
+        , stepDuration = fr // once per second
+        , start;
+
+      let draw = function(callback) {
+        if (!start)
+          start = frameCount;
+
+        let i = floor((frameCount - start) / stepDuration);
+        if (i < countText.length) {
+          stroke(255);
+          strokeWeight(2);
+          textSize(32);
+          textAlign("center");
+          text(countText[i], width/2, height/2);
+        }
+        else {
+          start = undefined;
+          s.drawCountdown = false;
+          drawQ.pop(); // currently only works because the countdown is the last in, TODO: needs a robust method of finding itself
+          if (typeof callback === "function")
+            callback();
+        }
       };
 
-    this.draw = function() {
-
-      ph.updateX();
-
-      for (let i=0; i<track.length; i++) {
-
-        let x = track.x+i;
-        let multiplier = x < ph.x && x > ph.x-9 ? 10+(x-ph.x)
-          : x < ph.x ? 1 : 0.05;
-        let y1 = track.y + tunnel.peaks[i] * (multiplier*self.peakHeightMultiplier);
-        // let y2 = track.y + tunnel.peaks[i] * -self.peakHeightMultiplier;
-
-        stroke( x < ph.x ? 255 : 0 );
-        strokeWeight(1);
-        line(x, track.y, x, y1);
-
-        if (peaksAreMirrored)
-          line(x, y2, x, track.y);
+      let drawFactory = function(callback) {
+        return function() {
+          draw(callback);
+        }
       }
 
-    }
+      return {draw, drawFactory};
+    }();
+
+    this.countdown = function(callback) {
+      s.drawCountdown = true;
+      drawQ.push(
+        typeof callback === "function"
+          ? countdown.drawFactory(callback)
+          : countdown.draw
+        );
+    };
+
+    this.draw = function() {
+      if (drawQ.length > 0)
+        drawQ.forEach(func => {
+          func();
+        });
+    };
+
+    // initialize
+    if (s.drawWaveform)
+      drawQ.push(waveform.draw);
+    // if (s.drawCountdown)
+    //   drawQ.push(countdown.draw);
   };
 
   let TunnelManager = function(sound, settings) { // t::todo convert to a class (fun, nth)
@@ -435,7 +499,7 @@ let Sketch = function() {
     let thrust = 4;
     let resetOnFrame;
 
-    self.mode = "play";
+    self.mode = "reset";
 
     let updateVars = function() {
 
@@ -472,14 +536,20 @@ let Sketch = function() {
           self.maxDiameter = self.minDiameter + self.minDiameter*3;
           self.mode = 'limbo';
           $(document).trigger({type: 'volume:change', level: 0.1});
+          uiControls.countdown(function() {
+            return function() {
+              resetOnFrame = frameCount;
+              self.mode = 'recovering';
+            }
+          }());
           break;
 
         case 'limbo':
           y = tunnel.getY('center');
-          $(document).one('thrust', function() {
-            resetOnFrame = frameCount;
-            self.mode = 'recovering';
-          });
+          // $(document).one('thrust', function() {
+          //   resetOnFrame = frameCount;
+          //   self.mode = 'recovering';
+          // });
           break;
 
         case 'recovering':
@@ -868,7 +938,7 @@ let hit = false;
     satellites.first = new Satellite(player, {freq: 'treble'});
 
     drawQ = [ // ordering matters will decide the stacking
-      waveform, tunnel, player, satellites.first//, uiControls
+      waveform, tunnel, player, satellites.first, uiControls
     ];
 
     // particles = new VectorParticles(circleWave);
@@ -913,6 +983,7 @@ let hit = false;
       // togglePlay('pause');
       background([0,0,0]);
       player.mode = 'reset';
+      // uiControls.countdown();
       tunnel.limits.reset();
     }
 
@@ -944,7 +1015,6 @@ let hit = false;
   -----------------------
 */
 
-  // fade sound if mouse is over canvas
   let togglePlay = function(toggle) {
     if (toggle === 'pause') {
       sound.pause();
