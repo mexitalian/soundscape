@@ -9,7 +9,6 @@ let Sketch = function() {
   let SPEED = 1;
   let bins = 128;
   let sound
-    , fft
     , cnv
     , game
     , tunnel
@@ -18,13 +17,12 @@ let Sketch = function() {
     , circleWave
     , particles
     , satellites = {}
-    , audioProperties
+    , audio
     , uiControls
     , drawQ
     , startMillis
     ;
   let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
-
   let center = {};
   let themes = {
     active: undefined, // to be assigned the active theme values
@@ -51,16 +49,16 @@ let Sketch = function() {
         let wall;
         if (player.mode === 'recovering' || player.mode === 'limbo') {
           wall = [
-            floor(audioProperties.energy.bass * v),
-            floor(audioProperties.energy.mid * v),
-            floor(audioProperties.energy.treble * v),
+            floor(audio.energy.bass * v),
+            floor(audio.energy.mid * v),
+            floor(audio.energy.treble * v),
           ];
         }
         else {
           wall = [
-            audioProperties.energy.bass,
-            audioProperties.energy.mid,
-            audioProperties.energy.treble
+            audio.energy.bass,
+            audio.energy.mid,
+            audio.energy.treble
           ];
         }
         this.wall = wall;
@@ -74,7 +72,11 @@ let Sketch = function() {
     Get the FFT spectrum, energies, waveform into a central location
     ----------------------------------------------------------------
   */
-  let AudioProperties = function() {
+  let AudioController = function() {
+
+    // var sound is set further up the scope
+
+    let fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
 
     this.energy;
     this.waveform;
@@ -89,6 +91,34 @@ let Sketch = function() {
         this.waveform = fft.waveform();
     };
 
+    this.toggle = function(toggle) {
+      if (toggle === 'pause') {
+        sound.pause();
+      }
+      else if (sound.isPlaying()) {
+        sound.pause();
+        player.mode = 'pause';
+      } else {
+        sound.play();
+        player.mode = 'play';
+      }
+    };
+
+    let togglePlayback = function(mode) {
+      switch(mode)
+      {
+        case "play": sound.play(); break;
+        case "pause": sound.pause(); break;
+      }
+    };
+
+    // Initialize
+    // ----------
+    // register custom event listener
+    $(document).on("mode:change", function(ev, mode) {
+      console.log(mode);
+      togglePlayback(mode);
+    });
     this.update();
   };
 
@@ -101,26 +131,32 @@ let Sketch = function() {
       [ ] Keep track of the score
       [ ]
     */
+    this.mode; // probably doesn't need to be exposed
 
-    this.mode;
+    let detectCollision = function() {
+      let hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
 
-    this.set = function(key, val) {
-
-      if (!this[key])
-        return;
-
-      this[key] = val;
-
-      switch(key)
-      {
-        case "mode":
-          // currently: pause, stop, play, recovering, limbo, reset
-          break;
+      if (hit) { // && player.mode !== 'pause'
+        // togglePlay('pause');
+        background([0,0,0]);
+        player.mode = 'reset';
+        // uiControls.countdown();
+        tunnel.limits.reset();
       }
+    }
+
+    this.set = function(key, val) { // this will accept and set any key
+      this[key] = val;
+      $(document).trigger(`${key}:change`, [val]);
     };
 
     this.update = function() {
-      // empty
+      if (sound.isPlaying()) {
+        audio.update();
+        if (themes.active.update)
+          themes.active.update();
+      }
+      detectCollision();
     };
   };
 
@@ -309,7 +345,7 @@ let Sketch = function() {
       vertices = [];
       offsetY = (!self.reactsToBass)
         ? self.limits.offset
-        : self.limits.offset + round(map(audioProperties.energy.bass, 0, 255, 0, self.maxOffsetY));
+        : self.limits.offset + round(map(audio.energy.bass, 0, 255, 0, self.maxOffsetY));
 
       // get the raw vertices
       for (let i=0; i < settings.peaksPerScreen+settings.peaksPerScreenBuffer; i++) {
@@ -450,6 +486,9 @@ let Sketch = function() {
     // for (let i=0; i < Math.floor(sound.duration()); i++) {
     //   sound.addCue(i, updateVertices);
     // }
+
+    // Initialize
+    updateVertices();
   };
 
   let Satellite = function(planet, options) {
@@ -467,7 +506,6 @@ let Sketch = function() {
     let x = this.x;
     let y = this.y;
     let diameter;
-    let audio = audioProperties;
 
     let updateDiameter = function() {
       diameter = map(audio.energy[s.freq], 0, 255, 0, planet.radius);
@@ -519,14 +557,14 @@ let Sketch = function() {
     };
   };
 
-  let PlayerManager = function() {
+  let Player = function() {
 
     let self = this;
-    let x = center.x;
-    let y = center.y; // begin at center
-    let diameter;
+    let x = self.x = center.x;
+    let y = self.y = center.y; // begin at center
     self.minDiameter = 10;
     self.maxDiameter = self.minDiameter + self.minDiameter*3;
+    let diameter = self.diameter = self.minDiameter;
     let hasThrust = false;
     let gravity = 6;
     let thrust = 4;
@@ -609,7 +647,7 @@ let Sketch = function() {
         default: break;
       }
 
-      diameter = map(audioProperties.energy.bass, 0, 255, self.minDiameter, self.maxDiameter);
+      diameter = map(audio.energy.bass, 0, 255, self.minDiameter, self.maxDiameter);
       self.x = x;
       self.y = y;
       self.diameter = diameter;
@@ -633,7 +671,7 @@ let Sketch = function() {
       , prevWaves = []
       , prevColors = []
       , self = this
-      , audio = audioProperties;
+      ;
 
     self.waveWeight = 60;
 
@@ -830,7 +868,7 @@ let Sketch = function() {
 */
     this.draw = function() {
 
-      let waveform = audioProperties.waveform, x, y;
+      let waveform = audio.waveform, x, y;
       vectors = [];
 
       fill(255);
@@ -957,17 +995,16 @@ let hit = false;
         player.mode = 'reset';
     });
 */
-    fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
     sound.amp(1, 1);
     center.x = width / 2;
     center.y = height / 2;
 
     game = new GameController();
-    audioProperties = new AudioProperties();
+    audio = new AudioController();
 
+    player = new Player();
     tunnel = new TunnelManager(sound, sketchSettings);
     waveform = new Wavy('outer');
-    player = new PlayerManager();
     uiControls = new UIController();
     satellites.first = new Satellite(player, {freq: 'treble'});
 
@@ -986,10 +1023,10 @@ let hit = false;
     });
 
     background(0);
-    togglePlay();
+    audio.toggle();
 
     self.sound = sound;
-    self.audioProperties = audioProperties;
+    self.audio = audio;
     self.uiControls = uiControls;
     self.tunnel = tunnel;
     self.player = player;
@@ -1001,28 +1038,11 @@ let hit = false;
 
     game.update();
 
-    if (sound.isPlaying()) {
-      audioProperties.update();
-      if (themes.active.update)
-        themes.active.update();
-    }
-
     if (themes.active.repaintBg) {
       background(themes.active.wall);
     }
 
     drawQ.forEach(ob => { ob.draw(); });
-    hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
-    // print("colliding? " + hit);
-
-    if (hit/* && player.mode !== 'pause'*/) {
-      // togglePlay('pause');
-      background([0,0,0]);
-      player.mode = 'reset';
-      // uiControls.countdown();
-      tunnel.limits.reset();
-    }
-
   };
 
   window.windowResized = function() {
@@ -1032,12 +1052,9 @@ let hit = false;
   };
 
   window.keyPressed = function(ev) {
-    switch(keyCode) {
-
-      case ESCAPE:
-        togglePlay();
-        break;
-
+    switch(keyCode)
+    {
+      case ESCAPE: audio.toggle(); break;
       /*case DOWN_ARROW:
         player.mode = "reset";
         break;*/
@@ -1050,19 +1067,6 @@ let hit = false;
   Processing Loop -  end
   -----------------------
 */
-
-  let togglePlay = function(toggle) {
-    if (toggle === 'pause') {
-      sound.pause();
-    }
-    else if (sound.isPlaying()) {
-      sound.pause();
-      player.mode = 'pause';
-    } else {
-      sound.play();
-      player.mode = 'play';
-    }
-  };
 
   let activeTheme = themes.active;
   let initDatGUI = function() {
