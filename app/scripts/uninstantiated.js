@@ -11,6 +11,7 @@ let Sketch = function() {
   let sound
     , fft
     , cnv
+    , game
     , tunnel
     , player
     , waveform
@@ -91,7 +92,39 @@ let Sketch = function() {
     this.update();
   };
 
-  let UIControls = function(opts = {}) {
+  let GameController = function() {
+    /*
+      I want to
+      [ ] Control playback from here
+      [ ] Tell the player what to do
+      [ ] Start and stop the audio
+      [ ] Keep track of the score
+      [ ]
+    */
+
+    this.mode;
+
+    this.set = function(key, val) {
+
+      if (!this[key])
+        return;
+
+      this[key] = val;
+
+      switch(key)
+      {
+        case "mode":
+          // currently: pause, stop, play, recovering, limbo, reset
+          break;
+      }
+    };
+
+    this.update = function() {
+      // empty
+    };
+  };
+
+  let UIController = function(opts = {}) {
     // sound is contructed before this instance is created
     let self = this
       , defaults = {
@@ -929,12 +962,13 @@ let hit = false;
     center.x = width / 2;
     center.y = height / 2;
 
+    game = new GameController();
     audioProperties = new AudioProperties();
 
     tunnel = new TunnelManager(sound, sketchSettings);
     waveform = new Wavy('outer');
     player = new PlayerManager();
-    uiControls = new UIControls();
+    uiControls = new UIController();
     satellites.first = new Satellite(player, {freq: 'treble'});
 
     drawQ = [ // ordering matters will decide the stacking
@@ -964,6 +998,8 @@ let hit = false;
   };
 
   window.draw = function() {
+
+    game.update();
 
     if (sound.isPlaying()) {
       audioProperties.update();
