@@ -1,0 +1,6 @@
+{
+  "name": "Soundscape",
+  "tagline": "SoundScape a audio to gameplay abstraction",
+  "body": "# SoundCloudScape\r\n\r\nSoundScape aims to be an audio to landscape/gameplay abstraction. <br>\r\nPart music visualiser part simple game kit.\r\n\r\n##Roadmap\r\nCurrently everything is entangled and the gameplay is set. The the decoupling process is underway.\r\n\r\nThe intention is to provide an interface to build a game around waveforms, collision detection, player control, custom game events on playback cue and more.\r\n\r\n##Origins\r\nOriginally conceived as a small experiment to reproduce the classic flash helicopter game of old [see example](http://www.helicoptergame.net/).\r\nIt uses the peaks of the audio track to create the cave/cavern the \"helicopter\" must navigate during playback.\r\n\r\n##Built using\r\n[p5js](http://p5js.org/) and [p5.collide2d](https://github.com/bmoren/p5.collide2D)\r\n",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
