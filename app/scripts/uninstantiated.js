@@ -40,7 +40,7 @@ let Sketch = function() {
     , drawQ
     , startMillis
     ;
-  let url = audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
+  let url = audioPlayer.url; // audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
   let center = {};
   let themes = {
     active: undefined, // to be assigned the active theme values

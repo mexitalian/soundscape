@@ -52,9 +52,14 @@ let SoundcloudManager = function(tracks) {
 };
 
 let LocalAudioManager = function() {
-  this.urls = ['hayley', 'yuna', 'alt-j', 'london', 'coma'].map(track => {
-    return `media/${track}.mp3`;
-  });
+  return {
+    name: "Bach – Air",
+    url: "media/bach_usafb_air.mp3" // Public domain https://musopen.org/music/466/johann-sebastian-bach/air-on-the-g-string-from-orchestral-suite-no-3-bwv-1068/
+  }
+  // for when there is more than one track
+  // this.urls = ['hayley', 'yuna', 'alt-j', 'london', 'coma'].map(track => {
+  //   return `media/${track}.mp3`;
+  // });
 }
 
 let FSAudioManager = function(tracks) {
