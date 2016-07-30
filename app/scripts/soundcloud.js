@@ -1,5 +1,5 @@
 SC.initialize({
-  client_id: 'db0249f51570a7fce24a3013e71009fd',
+  client_id: '<soundcloud api id>',
   redirect_uri: 'http://localhost:9000/callback.html'
 });
 
