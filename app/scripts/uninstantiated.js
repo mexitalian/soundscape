@@ -16,17 +16,19 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-let Sketch = function() {
+let Sketch = function(options = {}) {
 
   let self = this;
-  let sketchSettings = {
+  let defaults = {
+    audioColorMode: "RGB",
     peaksPerScreen: 3,
     peaksPerScreenBuffer: 2
   };
-  let fr = 60;
-  let SPEED = 1;
-  let bins = 128;
-  let sound
+  let sketchSettings = $.extend({}, defaults, options);
+  const SPEED = 1;
+  let fr = 60
+    , bins = 128
+    , sound
     , cnv
     , game
     , tunnel
@@ -62,22 +64,51 @@ let Sketch = function() {
       // hsl: {
       //   wall: [0,0,0] // just to begin set to black
       // },
+      rotate: function() {
+        let degree = 0;
+        return function() {
+          degree = degree < 360
+            ? degree += .2
+            : 0;
+          return floor(degree);
+        };
+      }(),
       update: function() {
-        let v = sound.getVolume();
-        let wall;
-        if (player.mode === 'recovering' || player.mode === 'limbo') {
+
+
+        let v = sound.getVolume()
+          , wall;
+
+        if (sketchSettings.audioColorMode === "HSB")
+        {
+          // HSB will map to Mid, Bass, Treble
+          // Hue = 0–360
+          // Saturation & Brightness 0–100
           wall = [
-            floor(audio.energy.bass * v),
-            floor(audio.energy.mid * v),
-            floor(audio.energy.treble * v),
+            this.rotate(),// map(audio.energy.mid, 0, 255, 0, 360),
+            map(audio.energy.bass, 50, 200, 0, 100),
+            map(audio.energy.treble, 50, 200, 0, 100)
           ];
         }
-        else {
-          wall = [
-            audio.energy.bass,
-            audio.energy.mid,
-            audio.energy.treble
-          ];
+        else // default is RGB
+        {
+          // TODO: phase out the volume manipulation
+          if (player.mode === 'recovering' || player.mode === 'limbo')
+          {
+            wall = [
+              floor(audio.energy.bass * v),
+              floor(audio.energy.mid * v),
+              floor(audio.energy.treble * v),
+            ];
+          }
+          else
+          {
+            wall = [
+              audio.energy.bass,
+              audio.energy.mid,
+              audio.energy.treble
+            ];
+          }
         }
         this.wall = wall;
         // this.hsl.wall = [hue(wall), saturation(wall), lightness(wall)];
@@ -629,6 +660,8 @@ let Sketch = function() {
       updateCoords();
       updateDiameter();
       noStroke(0);
+      if (sketchSettings.audioColorMode === HSB)
+        colorMode("HSB");
       fill(themes.active.wall);
       ellipse(x, y, diameter, diameter);
     };
@@ -836,6 +869,8 @@ let Sketch = function() {
       if (prevWaves.length > 0) {
 
         let offsetUnit = round(offsetBaseUnit / (fr/frameDiv));
+
+        colorMode(sketchSettings.audioColorMode);
 
         noFill();
         strokeWeight(self.waveWeight);

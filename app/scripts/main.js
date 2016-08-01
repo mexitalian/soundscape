@@ -63,6 +63,7 @@ let LocalAudioManager = function() {
 }
 
 let FSAudioManager = function(tracks) {
+  this.url = tracks[0];
   this.urls = tracks;
 };
 
@@ -134,14 +135,20 @@ let handleFileSelect = function(ev) {
 
   if (audioUrls.length > 0) {
     audioPlayer = new FSAudioManager(audioUrls);
-    window.sketch = new Sketch();
+    initSketch();
   }
+};
+
+let initSketch = function() {
+  window.sketch = new Sketch({
+    audioColorMode: "HSB"
+  });
 };
 
 document.querySelector('.js-files').addEventListener('change', handleFileSelect, false);
 document.querySelector('.js-use-local').addEventListener('click', function(ev) {
   audioPlayer = new LocalAudioManager();
-  window.sketch = new Sketch();
+  initSketch();
 });
 
 let dom = function() {
@@ -189,7 +196,7 @@ dom.$connectSoundcloud.on("click", function() {
     // console.log(pl.tracks);
 
     audioPlayer = new SoundcloudManager(pl.tracks);
-    window.sketch = new Sketch();
+    initSketch();
   });
 });
 
