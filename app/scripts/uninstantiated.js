@@ -146,8 +146,8 @@ let Sketch = function() {
       [ ] Control playback from here
       [ ] Tell the player what to do
       [ ] Start and stop the audio
-      [ ] Keep track of the score
-      [ ]
+      [x] Keep track of the score – how long a run has occured
+      [ ] 
     */
     this.mode; // probably doesn't need to be exposed
 
@@ -158,10 +158,33 @@ let Sketch = function() {
         // togglePlay('pause');
         background([0,0,0]);
         player.mode = 'reset';
-        // uiControls.countdown();
+        // uiControls.countIn();
         tunnel.limits.reset();
+        stopwatch.reset();
       }
-    }
+    };
+
+    // let's count the amount of time since the last collision
+    let stopwatch = function() {
+      let timestamp
+        , current
+        , best = 0
+        , get = function() {
+        if (!timestamp)
+          timestamp = millis();
+
+        current = millis() - timestamp;
+
+        return {current, best};
+      }
+        , reset = function() {
+        best = best > current ? best : current;
+        timestamp = undefined;
+      };
+      return {get, reset};
+    }();
+
+    this.stopwatch = stopwatch;
 
     this.set = function(key, val) { // this will accept and set any key
       this[key] = val;
@@ -169,7 +192,8 @@ let Sketch = function() {
     };
 
     this.update = function() {
-      if (sound.isPlaying()) {
+      if (sound.isPlaying())
+      {
         audio.update();
         if (themes.active.update)
           themes.active.update();
@@ -234,7 +258,25 @@ let Sketch = function() {
       return {draw};
     }();
 
-    let countdown = function() {
+    let score = function() {
+
+      let format = function(millis) {
+        return `${floor(millis/1000)}:${floor(((millis%1000)/10))}`;
+      };
+
+      let draw = function(time) {
+        stroke(255);
+        strokeWeight(2);
+        textSize(32);
+        textAlign("left");
+        text(format(time.current), 100, 100);
+        text(format(time.best), 100, 140);
+      };
+
+      return {draw};
+    }();
+
+    let countIn = function() {
       let countText = ["Ready","3", "2", "1", "Go!"]
         , stepDuration = fr // once per second
         , start;
@@ -254,7 +296,7 @@ let Sketch = function() {
         else {
           start = undefined;
           s.drawCountdown = false;
-          drawQ.pop(); // currently only works because the countdown is the last in, TODO: needs a robust method of finding itself
+          drawQ.pop(); // currently only works because the countIn is the last in, TODO: needs a robust method of finding itself
           if (typeof callback === "function")
             callback();
         }
@@ -269,12 +311,14 @@ let Sketch = function() {
       return {draw, drawFactory};
     }();
 
-    this.countdown = function(callback) {
+    this.score = score;
+
+    this.countIn = function(callback) {
       s.drawCountdown = true;
       drawQ.push(
         typeof callback === "function"
-          ? countdown.drawFactory(callback)
-          : countdown.draw
+          ? countIn.drawFactory(callback)
+          : countIn.draw
         );
     };
 
@@ -283,13 +327,15 @@ let Sketch = function() {
         drawQ.forEach(func => {
           func();
         });
+
+      score.draw(game.stopwatch.get());
     };
 
     // initialize
     if (s.drawWaveform)
       drawQ.push(waveform.draw);
     // if (s.drawCountdown)
-    //   drawQ.push(countdown.draw);
+    //   drawQ.push(countIn.draw);
   };
 
   let TunnelManager = function(sound, settings) { // t::todo convert to a class (fun, nth)
@@ -625,7 +671,7 @@ let Sketch = function() {
           self.maxDiameter = self.minDiameter + self.minDiameter*3;
           self.mode = 'limbo';
           $(document).trigger({type: 'volume:change', level: 0.1});
-          uiControls.countdown(function() {
+          uiControls.countIn(function() {
             return function() {
               resetOnFrame = frameCount;
               self.mode = 'recovering';
