@@ -147,17 +147,19 @@ let Sketch = function() {
       [ ] Tell the player what to do
       [ ] Start and stop the audio
       [x] Keep track of the score – how long a run has occured
-      [ ] 
+      [ ]
     */
+    let self = this;
     this.mode; // probably doesn't need to be exposed
 
     let detectCollision = function() {
       let hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
 
       if (hit) { // && player.mode !== 'pause'
-        // togglePlay('pause');
+        audio.toggle('pause');
         background([0,0,0]);
         player.mode = 'reset';
+        // self.mode = 'stopped';
         // uiControls.countIn();
         tunnel.limits.reset();
         stopwatch.reset();
@@ -170,12 +172,16 @@ let Sketch = function() {
         , current
         , best = 0
         , get = function() {
-        if (!timestamp)
-          timestamp = millis();
 
-        current = millis() - timestamp;
+          if (self.mode === "stopped") // this should be in the drawing
+            return;
 
-        return {current, best};
+          if (!timestamp)
+            timestamp = millis();
+
+          current = millis() - timestamp;
+
+          return {current, best};
       }
         , reset = function() {
         best = best > current ? best : current;
@@ -183,8 +189,6 @@ let Sketch = function() {
       };
       return {get, reset};
     }();
-
-    this.stopwatch = stopwatch;
 
     this.set = function(key, val) { // this will accept and set any key
       this[key] = val;
@@ -197,6 +201,8 @@ let Sketch = function() {
         audio.update();
         if (themes.active.update)
           themes.active.update();
+
+        this.stopwatch = stopwatch.get();
       }
       detectCollision();
     };
@@ -253,31 +259,38 @@ let Sketch = function() {
               if (s.peaksAreMirrored)
                 line(x, y2, x, track.y);
             }
-          };
+          }
+        , init = function() {
+          textFont("monospace");
+        };
+
+      init();
 
       return {draw};
     }();
 
     let score = function() {
 
-      let format = function(millis) {
-        return `${floor(millis/1000)}:${floor(((millis%1000)/10))}`;
-      };
-
-      let draw = function(time) {
-        stroke(255);
-        strokeWeight(2);
-        textSize(32);
-        textAlign("left");
-        text(format(time.current), 100, 100);
-        text(format(time.best), 100, 140);
-      };
+      let yPos1 = height-40
+        , yPos2 = height-20
+        , format = function(millis) {
+          return `${floor(millis/1000)}:${floor(((millis%1000)/10))}`;
+        }
+        , draw = function(time) {
+          stroke(255);
+          strokeWeight(2);
+          fill(0);
+          textSize(18);
+          textAlign("left");
+          text(format(time.current), 40, yPos1);
+          text(`${format(time.best)} best`, 40, yPos2);
+        };
 
       return {draw};
     }();
 
     let countIn = function() {
-      let countText = ["Ready","3", "2", "1", "Go!"]
+      let countText = ["Ready","Go!"]
         , stepDuration = fr // once per second
         , start;
 
@@ -328,7 +341,7 @@ let Sketch = function() {
           func();
         });
 
-      score.draw(game.stopwatch.get());
+      score.draw(game.stopwatch);
     };
 
     // initialize
@@ -673,6 +686,7 @@ let Sketch = function() {
           $(document).trigger({type: 'volume:change', level: 0.1});
           uiControls.countIn(function() {
             return function() {
+              audio.toggle();
               resetOnFrame = frameCount;
               self.mode = 'recovering';
             }
@@ -1099,7 +1113,6 @@ let hit = false;
   };
 
   window.draw = function() {
-
     game.update();
 
     if (themes.active.repaintBg) {
@@ -1121,9 +1134,8 @@ let hit = false;
     switch(keyCode)
     {
       case ESCAPE: audio.toggle(); break;
-      /*case DOWN_ARROW:
-        player.mode = "reset";
-        break;*/
+      case ENTER: saveCanvas('canvas_capture', 'png'); break;
+      /* case DOWN_ARROW: player.mode = "reset"; break; */
     }
   };
 
