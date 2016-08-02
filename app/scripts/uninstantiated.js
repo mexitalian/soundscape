@@ -86,8 +86,8 @@ let Sketch = function(options = {}) {
           // Saturation & Brightness 0–100
           wall = [
             this.rotate(),// map(audio.energy.mid, 0, 255, 0, 360),
-            map(audio.energy.bass, 50, 200, 0, 100),
-            map(audio.energy.treble, 50, 200, 0, 100)
+            map(audio.energy.treble, 155, 255, 0, 100),
+            map(audio.energy.bass, 155, 255, 0, 100)
           ];
         }
         else // default is RGB
@@ -1099,9 +1099,12 @@ let hit = false;
   };
 
   window.setup = function() {
+
+    $(document).trigger('sketch:ready');
     // collideDebug(true);
     frameRate(fr);
     cnv = createCanvas(600, 400); //windowWidth, windowHeight
+    cnv.parent('canvas');
 /*
     cnv.mousePressed(function() {
       if (!sound.isPlaying())

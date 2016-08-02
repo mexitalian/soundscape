@@ -270,6 +270,10 @@ dom.$waveContainer.css({
     }
   });
 
+  $(document).one('sketch:ready', function() {
+    $('#canvas-capture').remove();
+  })
+
 })();
 
 
