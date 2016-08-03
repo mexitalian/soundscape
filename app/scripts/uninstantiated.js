@@ -33,6 +33,7 @@ let Sketch = function(options = {}) {
     , game
     , tunnel
     , player
+    , powerUp
     , waveform
     , circleWave
     , particles
@@ -59,20 +60,37 @@ let Sketch = function(options = {}) {
     dynamic: {
       name: 'dynamic',
       repaintBg: false,
+      hue: {
+        degree: 0
+      },
       bg: [0],
       wall: [0], // just to begin set to black
       // hsl: {
       //   wall: [0,0,0] // just to begin set to black
       // },
-      rotate: function() {
-        let degree = 0;
-        return function() {
+      rotate: function(deg) {
+        // let degree = 0;
+        // return function(deg) {
+
+        let degree = this.hue.degree;
+
+          if (deg)
+            degree = (degree+deg)%360;
+
           degree = degree < 360
-            ? degree += .2
+            ? degree + .2
             : 0;
+
+          this.hue.degree = degree;
           return floor(degree);
-        };
-      }(),
+      //   };
+      // }(),
+      },
+      getColor: function(type) {
+        let deg = type === 'comp' ? 180 : 120; // 120 is tertiary
+
+        return `hsb(${floor(this.hue.degree+deg)%360}, ${floor(map(audio.energy.treble, 0, 255, 0, 100))}%, ${floor(map(audio.energy.bass, 0, 255, 0, 100))}%)`;
+      },
       update: function() {
 
 
@@ -84,11 +102,8 @@ let Sketch = function(options = {}) {
           // HSB will map to Mid, Bass, Treble
           // Hue = 0–360
           // Saturation & Brightness 0–100
-          wall = [
-            this.rotate(),// map(audio.energy.mid, 0, 255, 0, 360),
-            map(audio.energy.treble, 155, 255, 0, 100),
-            map(audio.energy.bass, 155, 255, 0, 100)
-          ];
+          // Note: Hue used to be map(audio.energy.mid, 0, 255, 0, 360),
+          wall = `hsb(${this.rotate()}, ${floor(map(audio.energy.treble, 0, 255, 0, 100))}%, ${floor(map(audio.energy.bass, 0, 255, 0, 100))}%)`;
         }
         else // default is RGB
         {
@@ -182,10 +197,13 @@ let Sketch = function(options = {}) {
     */
     let self = this;
     this.mode; // probably doesn't need to be exposed
+    let level = 1
+      , newLevelFreq = 3000;
 
     let detectCollision = function() {
-      let hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
 
+      // Tunnel
+      let hit = collideCirclePoly(player.x, player.y, player.diameter, tunnel.vertices);
       if (hit) { // && player.mode !== 'pause'
         audio.toggle('pause');
         background([0,0,0]);
@@ -194,6 +212,19 @@ let Sketch = function(options = {}) {
         // uiControls.countIn();
         tunnel.limits.reset();
         stopwatch.reset();
+        level = 1;
+      }
+
+      // PowerUp
+      if (
+        powerUp.isOnStage &&
+        powerUp.x + powerUp.diameter > player.x
+      ) {
+        let powerUpHit = collideCircleCircle(player.x, player.y, player.diameter, powerUp.x, powerUp.y, powerUp.diameter)
+        if (powerUpHit) {
+          powerUp.remove();
+          themes.active.rotate(180);
+        }
       }
     };
 
@@ -234,6 +265,11 @@ let Sketch = function(options = {}) {
           themes.active.update();
 
         this.stopwatch = stopwatch.get();
+
+        if (this.stopwatch.current > level*newLevelFreq) {
+          level++;
+          powerUp.spawn();
+        }
       }
       detectCollision();
     };
@@ -384,6 +420,14 @@ let Sketch = function(options = {}) {
 
   let TunnelManager = function(sound, settings) { // t::todo convert to a class (fun, nth)
 
+    /*
+      exposed
+      getVertices
+      getY
+        position: top, bottom, center, bounds
+        position type object {x,y}
+    */
+
     let self = this;
     let s = settings;
     let waveWidth = Math.round(sound.duration() * width);
@@ -524,6 +568,7 @@ let Sketch = function(options = {}) {
       else {
         positionX = 0;
       }
+      self.positionX = positionX;
     };
 
     let updateVars = function() {
@@ -550,43 +595,67 @@ let Sketch = function(options = {}) {
     };
 
     this.getVertices = function(xPosition = 'center') {
+      if (!vertices) // when no sound has been analised but another object wants the vertices
+        return false;
+
       switch(xPosition) {
         case 'center':
-          if (!vertices) // when no sound has been analised but another object wants the vertices
-            return false;
-
           return vertices.filter(v => {
             // get the two vertices either side of the horizontal center
             return v.x >= center.x - peakDistance && v.x <= center.x + peakDistance;
           });
+
+        case 'right':
+          return vertices.filter(v => {
+            // get the two vertices either side of the horizontal center
+            return v.x >= width - peakDistance && v.x <= width + peakDistance;
+          });
       }
     };
 
-    this.getY = function(position) {
+    this.getY = function(pos) {
 
-      let cv = this.getVertices();
+      let vs = this.getVertices( typeof pos === 'string' ? 'center' : pos.x );
 
-      if (!cv)
+      if (!vs)
         return 0;
 
-      let adj = cv[1].x - cv[0].x; // same as peakDistance but rounded
-      let oppOnRight = cv[0].y > cv[1].y;
-      let opp = oppOnRight ? cv[0].y - cv[1].y : cv[1].y - cv[0].y;
+      let adj = vs[1].x - vs[0].x; // same as peakDistance but rounded
+      let oppOnRight = vs[0].y > vs[1].y;
+      let opp = oppOnRight ? vs[0].y - vs[1].y : vs[1].y - vs[0].y;
       let rad = atan(opp/adj);
-      let adjToCenter = oppOnRight ? center.x - cv[0].x : cv[1].x - center.x;
+      let adjToCenter = typeof pos === 'string'
+        ? oppOnRight ? center.x - vs[0].x : vs[1].x - center.x
+        : oppOnRight ? width - vs[0].x : vs[1].x - width;
       let oppAtCenter = adjToCenter * tan(rad);
-      let y = oppOnRight ? cv[0].y - oppAtCenter : cv[1].y - oppAtCenter; // topmost point of the linedraw between vertices
+      let y = oppOnRight ? vs[0].y - oppAtCenter : vs[1].y - oppAtCenter; // topmost point of the linedraw between vertices
 
-      switch (position)
+      switch(typeof pos)
       {
-        case 'top':
-          return y;
+        case 'string':
+          switch (pos)
+          {
+            case 'top':
+            return y;
 
-        case 'bottom':
-          return y + offsetY*2; // the distance between top and bottom
+            case 'bottom':
+            return y + offsetY*2; // the distance between top and bottom
 
-        case 'center':
-          return y + offsetY; // by the half distance between top and bottom
+            case 'center':
+            return y + offsetY; // by the half distance between top and bottom
+
+            case 'bounds':
+            return {top: y, bottom: y + offsetY * 2};
+          }
+          break;
+
+        // to begin with an object being passed in will be for the power up
+        // so we shall keep it simple and expand later when needed
+        case 'object':
+          switch(pos.y) {
+            case 'bounds':
+              return {top: y, bottom: y + offsetY * 2};
+          }
       }
     };
 
@@ -598,6 +667,79 @@ let Sketch = function(options = {}) {
     // Initialize
     updateVertices();
   };
+
+  /*
+    ============
+      #PowerUp
+    ============
+  */
+
+  let PowerUp = function() {
+
+    // need to get the yOffset from the tunnel musicManager
+    // which really needs to become it's own manager
+    this.isOnStage = true;
+    let self = this
+      , initialX
+      , x
+      , y
+      , diameter = self.diameter = 16
+      , padding = 20
+      , update = function() {
+
+        if (!self.isOnStage)
+          return;
+
+        let {top, bottom} = tunnel.getY({x: 'right', y: 'bounds'});
+
+        if (!initialX) {
+          initialX = tunnel.positionX;
+          self.y = y = top + random((bottom-padding)-(top+padding));
+        }
+
+        self.x = x = width - (tunnel.positionX - initialX);
+
+        if (tunnel.positionX - initialX > width) {
+          initialX = undefined;
+          self.isOnStage = false;
+        }
+      }
+      , draw = {
+        hueUp: function() {
+          colorMode(HSB);
+          fill(themes.active.getColor('comp'));
+          ellipse(x,y,diameter,diameter);
+        },
+        satteliteUp: function() {
+          // not sure what to do with this one
+        }
+      };
+
+    this.remove = function() {
+      self.isOnStage = false;
+      initialX = undefined;
+    };
+
+    this.spawn = function() {
+      this.isOnStage = true;
+    };
+
+    this.draw = function() {
+
+      if (!this.isOnStage)
+        return;
+
+      update();
+      draw.hueUp();
+
+    };
+  };
+
+  /*
+    =============
+      Satellite
+    =============
+  */
 
   let Satellite = function(planet, options) {
 
@@ -660,8 +802,8 @@ let Sketch = function(options = {}) {
       updateCoords();
       updateDiameter();
       noStroke(0);
-      if (sketchSettings.audioColorMode === HSB)
-        colorMode("HSB");
+      if (sketchSettings.audioColorMode === "HSB")
+        colorMode(HSB);
       fill(themes.active.wall);
       ellipse(x, y, diameter, diameter);
     };
@@ -774,7 +916,10 @@ let Sketch = function(options = {}) {
 
   };
 
-
+/*
+    #Wavy
+  =========
+*/
 
   let Wavy = function(orientation = 'tunnel') {
 
@@ -784,7 +929,7 @@ let Sketch = function(options = {}) {
       , self = this
       ;
 
-    self.waveWeight = 60;
+    self.waveWeight = 45;
 
     switch(orientation) {
       case "vertical":
@@ -805,7 +950,6 @@ let Sketch = function(options = {}) {
         offsetBaseUnit = height;
         break;
     }
-
 
     this.draw = function() {
 
@@ -870,7 +1014,7 @@ let Sketch = function(options = {}) {
 
         let offsetUnit = round(offsetBaseUnit / (fr/frameDiv));
 
-        colorMode(sketchSettings.audioColorMode);
+        // colorMode(sketchSettings.audioColorMode);
 
         noFill();
         strokeWeight(self.waveWeight);
@@ -879,7 +1023,7 @@ let Sketch = function(options = {}) {
         for (let j=0; j<prevWaves.length; j++)
         {
           let multi = j+1
-          let offset = multi * offsetUnit + (self.waveWeight > 1 ? multi * (self.waveWeight*0.4) : 0);
+          let offset = multi * offsetUnit + (self.waveWeight > 1 ? multi * (self.waveWeight*0.3) : 0);
           // let strokeColor = orientation === 'outer' ? [255, offset] : 255-offset;
           let strokeColor = (orientation !== 'outer') ? 255-offset : prevColors[j];
 
@@ -1120,12 +1264,13 @@ let hit = false;
 
     player = new Player();
     tunnel = new TunnelManager(sound, sketchSettings);
+    powerUp = new PowerUp();
     waveform = new Wavy('outer');
     uiControls = new UIController();
     satellites.first = new Satellite(player, {freq: 'treble'});
 
     drawQ = [ // ordering matters will decide the stacking
-      waveform, tunnel, player, satellites.first, uiControls
+      waveform, tunnel, player, powerUp, satellites.first, uiControls
     ];
 
     // particles = new VectorParticles(circleWave);
@@ -1141,11 +1286,14 @@ let hit = false;
     background(0);
     audio.toggle();
 
+    self.game = game;
     self.sound = sound;
     self.audio = audio;
     self.uiControls = uiControls;
     self.tunnel = tunnel;
     self.player = player;
+    self.themes = themes;
+    self.powerUp = powerUp;
 
     initDatGUI();
   };
@@ -1154,7 +1302,8 @@ let hit = false;
     game.update();
 
     if (themes.active.repaintBg) {
-      background(themes.active.wall);
+      // background(themes.active.wall);
+      background(0);
     }
 
     drawQ.forEach(ob => { ob.draw(); });
