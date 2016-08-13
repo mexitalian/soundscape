@@ -442,8 +442,9 @@ let Sketch = function(options = {}) {
     let offsetY;
 
     self.limits = new function() {
+
       let self = this;
-      let offset = height*.10
+      let offset = height*.30
       let frameRateToIncreaseOffset = fr/3;
       self.offset = offset;
       self.multiplier = 0.30;
@@ -451,13 +452,13 @@ let Sketch = function(options = {}) {
         // these are the extremes used to map the peak values to
         self.lower = round(height * self.multiplier);
         self.upper = round(height * (1 - self.multiplier));
-
+        // modify the tunnel girth when x playing time has passed
         if (
           player
           && frameCount % frameRateToIncreaseOffset === 0
           && player.mode != 'limbo'
         )
-          self.offset++;
+          self.offset--;
       };
       self.reset = function() {
         self.offset = offset;
@@ -572,6 +573,10 @@ let Sketch = function(options = {}) {
       self.positionX = positionX;
     };
 
+    // let updateOffsetY = function() {
+    //
+    // };
+
     let updateVars = function() {
       self.limits.update();
       updateVertices();
@@ -586,7 +591,8 @@ let Sketch = function(options = {}) {
 
       beginShape();
       fill(themes.active.bg);
-      stroke(255 - sound.getVolume() * 255);
+      // stroke(255 - sound.getVolume() * 255); // temporarilly disable fading out
+      stroke(255);
       strokeWeight(1);
 
       for (let v of vertices) {
