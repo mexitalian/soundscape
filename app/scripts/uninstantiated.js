@@ -33,6 +33,7 @@ let Sketch = function(options = {}) {
     , game
     , tunnel
     , player
+    , circular
     , powerUp
     , waveform
     , circleWave
@@ -1093,20 +1094,20 @@ let Sketch = function(options = {}) {
 
 
 
-  let CircularWaveform = function(multiplier = 300) {
+  let CircularWaveform = function(multiplier = 400) {
 
     let self = this;
-    let radius = this.radius = 50; // px
+    let radius = this.radius = 20; // px
     // we shall begin by doing a quarter circle
     let degree = 360/bins;
     let radian = radians(degree); // the increment around the circle in radians
     let vectors;
 
-    let prevVectorsLength = 5; // 60 frames of old vectors = 1 second
-    let prevVectorsIsFull = false;
-    let prevVectors = this.prevVectors = new Array();
+    // let prevVectorsLength = 5; // 60 frames of old vectors = 1 second
+    // let prevVectorsIsFull = false;
+    // let prevVectors = this.prevVectors = new Array();
     let frameRange = 1;
-
+/*
     $(document).on("up", function() {
       if (frameRange == fr)
         return;
@@ -1118,7 +1119,6 @@ let Sketch = function(options = {}) {
         return;
       frameRange--;
     });
-/*
     let getPrevVectors = function() {
       return prevVectors; // necessary??? ::Todo:: Check
     };
@@ -1126,12 +1126,13 @@ let Sketch = function(options = {}) {
     this.draw = function() {
 
       let waveform = audio.waveform, x, y;
-      vectors = [];
+      // vectors = [];
 
       fill(255);
+      noStroke();
       beginShape();
-      stroke(255,255,255); // waveform is white
-      strokeWeight(1);
+      // stroke(255,255,255); // waveform is white
+      // strokeWeight(1);
 
       for (let i=0; i<bins; i++) {
 
@@ -1171,21 +1172,21 @@ let Sketch = function(options = {}) {
 
         vertex(x, y);
 
-        vectors.push(createVector(x, y));
+        // vectors.push(createVector(x, y));
       }
 
       endShape();
-
-      if (frameCount % frameRange === 0)
-      {
-        if (!prevVectorsIsFull) {
-          prevVectorsIsFull = prevVectors.length == prevVectorsLength;
-        }
-        else {
-          prevVectors.pop();
-        }
-        prevVectors.unshift(vectors);
-      }
+      //
+      // if (frameCount % frameRange === 0)
+      // {
+      //   if (!prevVectorsIsFull) {
+      //     prevVectorsIsFull = prevVectors.length == prevVectorsLength;
+      //   }
+      //   else {
+      //     prevVectors.pop();
+      //   }
+      //   prevVectors.unshift(vectors);
+      // }
 
       self.x = center.x;
       self.y = center.y;
@@ -1263,6 +1264,7 @@ let hit = false;
     audio = new AudioController();
 
     player = new Player();
+    circular = new CircularWaveform();
     tunnel = new TunnelManager(sound, sketchSettings);
     powerUp = new PowerUp();
     waveform = new Wavy('outer');
@@ -1270,7 +1272,7 @@ let hit = false;
     satellites.first = new Satellite(player, {freq: 'treble'});
 
     drawQ = [ // ordering matters will decide the stacking
-      waveform, tunnel, player, powerUp, satellites.first, uiControls
+      waveform, tunnel, player, powerUp, satellites.first, uiControls/*, circular*/
     ];
 
     // particles = new VectorParticles(circleWave);
