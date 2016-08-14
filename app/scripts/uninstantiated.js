@@ -590,8 +590,9 @@ let Sketch = function(options = {}) {
         updateVars();
 
       beginShape();
-      fill(themes.active.bg);
+      // fill(themes.active.bg);
       // stroke(255 - sound.getVolume() * 255); // temporarilly disable fading out
+      noFill();
       stroke(255);
       strokeWeight(1);
 
@@ -936,7 +937,7 @@ let Sketch = function(options = {}) {
       , self = this
       ;
 
-    self.waveWeight = 45;
+    self.waveWeight = 50;
 
     switch(orientation) {
       case "vertical":
@@ -958,144 +959,166 @@ let Sketch = function(options = {}) {
         break;
     }
 
-    this.draw = function() {
-
+    let updateVars = function() {
       switch(orientation) {
         case 'tunnel':
-        case 'outer':
           minY = tunnel.getY('top');
           maxY = tunnel.getY('bottom');
           break;
+
+        case 'outer':
+          minY = tunnel.getY('top');// -100;
+          maxY = tunnel.getY('bottom');// +100;
+          break;
       }
+    }
+      , getWave = function() {
 
-      let wave = [], frameDiv = 3;
+          let vertices = [];
 
-      if (orientation !== 'outer') {
-        beginShape();
-        noFill();
-        stroke(255); // waveform is white
+          for (let i = 0; i< audio.waveform.length; i++)
+          {
+            let x, y;
+            switch (orientation) {
+              case 'tunnel':
+                x = (width/2 + maxX/2) - map(audio.waveform[i], -1, 1, minX, maxX);
+                y = map(i, 0, audio.waveform.length, minY, maxY); // there will be surplus detail here that cannot be drawn, only take the available pixels to peaks
+                break;
+
+              case 'vertical':
+                x = map(audio.waveform[i], -1, 1, minX, maxX);
+                y = map(i, 0, audio.waveform.length, 0, height);
+                break;
+
+              case 'horizontal':
+                x = map(i, 0, audio.waveform.length, minX, maxX);
+                y = map(audio.waveform[i], -1, 1, 0, height);
+                break;
+
+              case 'outer':
+                x = map(i, 0, audio.waveform.length, minX, maxX);
+                y = map(audio.waveform[i], -1, 1, minY, maxY);
+                break;
+            }
+            vertices.push({x,y});
+          }
+
+          return vertices;
       }
+      , drawCurrent = function() {
 
-      for (let i = 0; i< audio.waveform.length; i++)
-      {
-        let x, y;
-        switch (orientation) {
-          case 'tunnel':
-            x = (width/2 + maxX/2) - map(audio.waveform[i], -1, 1, minX, maxX);
-            y = map(i, 0, audio.waveform.length, minY, maxY); // there will be surplus detail here that cannot be drawn, only take the available pixels to peaks
-            break;
+    }
+      , drawPrevious = function() {
 
-          case 'vertical':
-            x = map(audio.waveform[i], -1, 1, minX, maxX);
-            y = map(i, 0, audio.waveform.length, 0, height);
-            break;
+          let offsetUnit = round(offsetBaseUnit/4);
 
-          case 'horizontal':
-            x = map(i, 0, audio.waveform.length, minX, maxX);
-            y = map(audio.waveform[i], -1, 1, 0, height);
-            break;
+          noFill();
+          strokeWeight(self.waveWeight);
+          strokeCap(PROJECT);
 
-          case 'outer':
-            x = map(i, 0, audio.waveform.length, minX, maxX);
-            y = map(audio.waveform[i], -1, 1, minY, maxY);
-            break;
-        }
-        if (orientation !== 'outer')
-          vertex(x,y);
-        wave.push({x,y});
-      }
-      if (orientation !== 'outer')
-        endShape();
+          for (let j=0; j<prevWaves.length; j++)
+          {
+            let multi = j+1
+            let offset = multi * offsetUnit + (
+              self.waveWeight > 1
+                ? multi * (self.waveWeight * 0.3)
+                : 0
+            );
 
-      if (frameCount%frameDiv === 0) {
+            let strokeColor = orientation === 'outer' ? prevColors[j] : 255-offset;
+            beginShape();
+            stroke(strokeColor); // waveform is progressive shades away from white
+
+            for (
+              let k=0;
+              k < prevWaves[j].length;
+              k += k===0 ? 15 : 16 // bring the resolution right down
+            ) {
+
+              switch(orientation) {
+                case 'tunnel':
+                case 'vertical':
+                vertex(
+                  prevWaves[j][k].x-offset,
+                  prevWaves[j][k].y
+                );
+                break;
+
+                case 'horizontal':
+                vertex(
+                  prevWaves[j][k].x,
+                  prevWaves[j][k].y-minY-offset
+                );
+                break;
+
+                case 'outer':
+                vertex(
+                  prevWaves[j][k].x,
+                  prevWaves[j][k].y - offset
+                );
+                break;
+              }
+            }
+            endShape();
+
+            if (orientation === 'outer') {
+              beginShape();
+              stroke(strokeColor);
+              for (
+                let l=0;
+                l < prevWaves[j].length;
+                l += l===0 ? 15 : 16 // abstract this value
+                // l += self.waveWeight > 1 ? 16 : 4 // abstract this value
+              ) {
+                vertex(
+                  prevWaves[j][l].x,
+                  prevWaves[j][l].y + offset
+                );
+              }
+              endShape();
+            }
+
+            if (tunnel.limits.keepDrawingWaves(j+1)) // how many waveforms to display depends on tunnel growth
+              return;
+          }
+    };
+
+    this.draw = function() {
+
+      updateVars();
+
+      let wave = getWave()
+        , frameDivider = 3;
+
+      beginShape();
+      noFill();
+      stroke(25); // waveform is white
+
+      if (orientation === "outer")
+        strokeWeight(tunnel.limits.upper - tunnel.limits.lower);
+
+      wave.forEach(w => {
+        vertex(w.x,w.y);
+      });
+      endShape();
+
+
+
+      if (frameCount%frameDivider === 0) {
         prevWaves.unshift(wave);
         prevColors.unshift(themes.active.wall);
       }
 
-      if (prevWaves.length > 5) {
+      if (prevWaves.length > 5)
+      {
         prevWaves.pop();
         prevColors.pop();
       }
 
-      if (prevWaves.length > 0) {
+      if (prevWaves.length > 0)
+        drawPrevious();
 
-        let offsetUnit = round(offsetBaseUnit / (fr/frameDiv));
-
-        // colorMode(sketchSettings.audioColorMode);
-
-        noFill();
-        strokeWeight(self.waveWeight);
-        strokeCap(PROJECT);
-
-        for (let j=0; j<prevWaves.length; j++)
-        {
-          let multi = j+1
-          let offset = multi * offsetUnit + (self.waveWeight > 1 ? multi * (self.waveWeight*0.3) : 0);
-          // let strokeColor = orientation === 'outer' ? [255, offset] : 255-offset;
-          let strokeColor = (orientation !== 'outer') ? 255-offset : prevColors[j];
-
-          if(orientation === 'outer') {
-            // NOTE couldn't figure out the color mode properties
-            // colorMode(HSL);
-            // strokeColor = color(
-            //   themes.active.hsl.wall[0],
-            //   themes.active.hsl.wall[1] - j*10,
-            //   themes.active.hsl.wall[2] // decrease by 5% brightness
-            // );
-            // colorMode(RGB);
-          }
-          beginShape();
-          stroke(strokeColor); // waveform is progressive shades away from white
-
-          for (
-            let k=0;
-            k < prevWaves[j].length;
-            k += k===0 ? 15 : 16
-          ) {
-            switch(orientation) {
-              case 'tunnel':
-              case 'vertical':
-              vertex(prevWaves[j][k].x-offset, prevWaves[j][k].y);
-              break;
-
-              case 'horizontal':
-              vertex(prevWaves[j][k].x, prevWaves[j][k].y-minY-offset);
-              break;
-
-              case 'outer':
-              vertex(
-                prevWaves[j][k].x,
-                prevWaves[j][k].y - offset
-              );
-              break;
-            }
-          }
-          endShape();
-
-          if (orientation === 'outer') {
-            beginShape();
-            stroke(strokeColor);
-            for (
-              let l=0;
-              l < prevWaves[j].length;
-              l += l===0 ? 15 : 16 // abstract this value
-              // l += self.waveWeight > 1 ? 16 : 4 // abstract this value
-            ) {
-              vertex(
-                prevWaves[j][l].x,
-                prevWaves[j][l].y + offset
-              );
-            }
-            endShape();
-          }
-
-          if (tunnel.limits.keepDrawingWaves(j+1)) // how many waveforms to display depends on tunnel growth
-            return;
-        }
-      }
     };
-
-    // return { draw, waveWeight };
   };
 
 
