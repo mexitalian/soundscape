@@ -358,7 +358,7 @@ let Sketch = function(options = {}) {
     }();
 
     let countIn = function() {
-      let countText = ["Ready","Go!"]
+      let countText = ["Ready?","Click to GO!"]
         , stepDuration = fr // once per second
         , start;
 
@@ -377,7 +377,9 @@ let Sketch = function(options = {}) {
         else {
           start = undefined;
           s.drawCountdown = false;
-          drawQ.pop(); // currently only works because the countIn is the last in, TODO: needs a robust method of finding itself
+          // NOTE: currently only works because the countIn is the last in
+          // TODO: needs a robust method of finding itself
+          drawQ.pop();
           if (typeof callback === "function")
             callback();
         }
@@ -869,9 +871,11 @@ let Sketch = function(options = {}) {
           $(document).trigger({type: 'volume:change', level: 0.1});
           uiControls.countIn(function() {
             return function() {
-              audio.toggle();
-              resetOnFrame = frameCount;
-              self.mode = 'recovering';
+              $(document).one('thrust', function() {
+                audio.toggle();
+                resetOnFrame = frameCount;
+                self.mode = 'recovering';
+              });
             }
           }());
           break;
