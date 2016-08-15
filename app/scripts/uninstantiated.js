@@ -771,33 +771,69 @@ let Sketch = function(options = {}) {
     #Moon
   */
 
-  let Moon = function(planet, options) {
+  let MoonConmplex = function(planet, options) {
 
     let self = this
-      , count = 0; // same as false
+      , count = 0
+      , moons = []
+      , defaults = {
+          freq: 'bass',
+          revSec: 1,
+          limit: 3
+          // maxDiameter: planet.radius,
+          // maxOrbit: planet.radius * 3
+        }
+      , s = $.extend({}, defaults, options) // settings
+      , degree = 360 / (fr / s.revSec) // full revolution per second
+      , radian = radians(degree); // the increment around the circle in radians
 
-    let defaults = {
-      freq: 'bass'//,
-      // maxDiameter: planet.radius,
-      // maxOrbit: planet.radius * 3
+    let Moon = function(type) { // bass, mid, treble
+      // VARS: x, y, colour, diam, type
+      // FUNC: sleep/destruct, update, draw
+      let self = this
+        , x
+        , y
+        , color
+        , diam
+        , freq = type
+        //functions
+        , update = function () {
+          // calculate the diameter
+          // get magnitude from sound.getEnergy
+          diam = map(audio.energy[freq], 0, 255, 0, planet.radius);
+          // get x and y using trigonometry
+          let coord = getCoord(type); // NOTE: check this works
+          x = coord.x;
+          y = coord.y;
+          // get the colour and shift the Hue
+          color = getColor(type);
+        };
+
+        this.draw = function() {
+
+          update();
+
+          if (sketchSettings.audioColorMode === "HSB")
+            colorMode(HSB);
+          // draw the bugger to the canvas
+          noStroke(0);
+          fill(color);
+          ellipse(x, y, diam, diam);
+        };
+
+        this.destory = function() {
+          // remove reference of self from the Array
+        };
+
     };
-    let s = $.extend({}, defaults, options); // settings
-    let degree = 360/fr/(s.freq === "bass" ? 2 : 1);
-    let radian = radians(degree); // the increment around the circle in radians
-    let x = this.x;
-    let y = this.y;
-    let diameter;
 
-    let updateDiameter = function() {
-      diameter = map(audio.energy[s.freq], 0, 255, 0, planet.radius);
-      self.radius = diameter/2;
-    };
-
-    let updateCoords = function() {
+    let getCoord = function(freq) {
 
       //  returns progression around the circle every frame
-      let i = frameCount % (fr*(s.freq === "bass" ? 2 : 1)) // what is this?
-        , hypotenuse = planet.radius + map(audio.energy[s.freq], 0, 255, 0, planet.radius*6); // able to drop into the planet
+      let i = frameCount % fr
+        , x
+        , y
+        , hypotenuse = planet.radius + map(audio.energy[freq], 0, 255, 0, planet.radius*6); // able to drop into the planet
 
       switch (i*degree) {
         case 0:
@@ -805,52 +841,58 @@ let Sketch = function(options = {}) {
           x = 0;
           y = hypotenuse;
           break;
-
         case 90:
           x = hypotenuse;
           y = 0;
           break;
-
         case 180:
           x = 0;
           y = -1 * hypotenuse;
           break;
-
         case 270:
           x = -1 * hypotenuse;
           y = 0;
           break;
-
         default:
           x = sin(radian*i) * hypotenuse;
           y = cos(radian*i) * hypotenuse;
+          break;
       }
-      self.x = x = x + planet.x;
-      self.y = y = y + planet.y;
+
+      return {
+        x: x + planet.x,
+        y: y + planet.y
+      }
     };
+
+    let getColor = function () {
+      // NOTE: later to put in logic produce colors, complemetary, Hue shift
+      return themes.active.wall;
+    }
 
     this.spawn = function (freq = 'bass') {
       count++;
-      s.freq = freq;
+      if (count>0)
+      {
+          moons[
+            moons.length < s.limit ? 'push' : 'pop'
+          ](new Moon(
+            count === 1
+              ? 'bass'
+              : count === 2
+                ? 'mid'
+                : 'treble'
+          ));
+      }
     };
 
     this.draw = function() {
       if (!count)
         return;
 
-      switch (count) {
-        case 1:
-        case 2:
-        case 3:
-          updateCoords();
-          updateDiameter();
-          noStroke(0);
-          if (sketchSettings.audioColorMode === "HSB")
-            colorMode(HSB);
-          fill(themes.active.wall);
-          ellipse(x, y, diameter, diameter);
-          break;
-      }
+      moons.forEach(moon => {
+        moon.draw();
+      });
 
     };
   };
@@ -1338,7 +1380,7 @@ let hit = false;
     powerUp = new PowerUp();
     waveform = new Wavy('outer');
     uiControls = new UIController();
-    moons = new Moon(player);
+    moons = new MoonConmplex(player);
 
     drawQ = [ // ordering matters will decide the stacking
       waveform, tunnel, player, powerUp, moons, uiControls/*, circular*/
