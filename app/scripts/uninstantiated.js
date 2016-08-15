@@ -38,7 +38,7 @@ let Sketch = function(options = {}) {
     , waveform
     , circleWave
     , particles
-    , satellites = {}
+    , moons
     , audio
     , uiControls
     , drawQ
@@ -214,18 +214,6 @@ let Sketch = function(options = {}) {
         tunnel.limits.reset();
         stopwatch.reset();
         level = 1;
-      }
-
-      // PowerUp
-      if (
-        powerUp.isOnStage &&
-        powerUp.x + powerUp.diameter > player.x
-      ) {
-        let powerUpHit = collideCircleCircle(player.x, player.y, player.diameter, powerUp.x, powerUp.y, powerUp.diameter)
-        if (powerUpHit) {
-          powerUp.remove();
-          themes.active.rotate(180);
-        }
       }
     };
 
@@ -680,16 +668,17 @@ let Sketch = function(options = {}) {
 
   /*
     ============
-      #PowerUp
-    ============
+    #PowerUp
   */
 
   let PowerUp = function() {
 
     // need to get the yOffset from the tunnel musicManager
     // which really needs to become it's own manager
-    this.isOnStage = true;
+    this.isOnStage = false;
+
     let self = this
+      , type
       , initialX
       , x
       , y
@@ -713,15 +702,47 @@ let Sketch = function(options = {}) {
           initialX = undefined;
           self.isOnStage = false;
         }
+
+        detectCollision();
+      }
+      , detectCollision = function() {
+
+        if (
+          self.isOnStage &&
+          self.x + self.diameter > player.x
+        )
+        {
+          if (collideCircleCircle(player.x, player.y, player.diameter, powerUp.x, powerUp.y, powerUp.diameter))
+          {
+            powerUp.remove();
+            activate[type]();
+          }
+        }
       }
       , draw = {
-        hueUp: function() {
+        hue: function() {
           colorMode(HSB);
           fill(themes.active.getColor('comp'));
           ellipse(x,y,diameter,diameter);
         },
-        satteliteUp: function() {
-          // not sure what to do with this one
+        moon: function() {
+
+          fill(themes.active.getColor('comp'));
+          ellipse(x,y, diameter, diameter);
+          ellipse(
+            x+diameter*.75,
+            y+diameter*.75,
+            diameter*.25,
+            diameter*.25
+          );
+        }
+      }
+      , activate = {
+        hue: function() {
+          themes.active.rotate(180);
+        },
+        moon: function() {
+          moons.spawn(); // move this up
         }
       };
 
@@ -731,6 +752,7 @@ let Sketch = function(options = {}) {
     };
 
     this.spawn = function() {
+      type = 'moon';
       this.isOnStage = true;
     };
 
@@ -740,27 +762,26 @@ let Sketch = function(options = {}) {
         return;
 
       update();
-      draw.hueUp();
-
+      draw[type]();
     };
   };
 
   /*
-    =============
-      Satellite
-    =============
+  =============
+    #Moon
   */
 
-  let Satellite = function(planet, options) {
+  let Moon = function(planet, options) {
 
-    let self = this;
+    let self = this
+      , count = 0; // same as false
+
     let defaults = {
       freq: 'bass'//,
       // maxDiameter: planet.radius,
       // maxOrbit: planet.radius * 3
     };
     let s = $.extend({}, defaults, options); // settings
-    // fuck you internal critic, I'll be a baillerina
     let degree = 360/fr/(s.freq === "bass" ? 2 : 1);
     let radian = radians(degree); // the increment around the circle in radians
     let x = this.x;
@@ -773,10 +794,10 @@ let Sketch = function(options = {}) {
     };
 
     let updateCoords = function() {
-      //  give me back the progression around the circle every frame
-      let i = frameCount % (fr*(s.freq === "bass" ? 2 : 1));
-      let hypotenuse = planet.radius + map(audio.energy[s.freq], 0, 255, 0, planet.radius*6); // able to drop into the planet
-      // let hypotenuse = planet.radius + map(audio.energy[s.freq], 0, 255, diameter, s.maxOrbit); // giving min planets diameter
+
+      //  returns progression around the circle every frame
+      let i = frameCount % (fr*(s.freq === "bass" ? 2 : 1)) // what is this?
+        , hypotenuse = planet.radius + map(audio.energy[s.freq], 0, 255, 0, planet.radius*6); // able to drop into the planet
 
       switch (i*degree) {
         case 0:
@@ -808,14 +829,29 @@ let Sketch = function(options = {}) {
       self.y = y = y + planet.y;
     };
 
+    this.spawn = function (freq = 'bass') {
+      count++;
+      s.freq = freq;
+    };
+
     this.draw = function() {
-      updateCoords();
-      updateDiameter();
-      noStroke(0);
-      if (sketchSettings.audioColorMode === "HSB")
-        colorMode(HSB);
-      fill(themes.active.wall);
-      ellipse(x, y, diameter, diameter);
+      if (!count)
+        return;
+
+      switch (count) {
+        case 1:
+        case 2:
+        case 3:
+          updateCoords();
+          updateDiameter();
+          noStroke(0);
+          if (sketchSettings.audioColorMode === "HSB")
+            colorMode(HSB);
+          fill(themes.active.wall);
+          ellipse(x, y, diameter, diameter);
+          break;
+      }
+
     };
   };
 
@@ -1302,16 +1338,13 @@ let hit = false;
     powerUp = new PowerUp();
     waveform = new Wavy('outer');
     uiControls = new UIController();
-    satellites.first = new Satellite(player, {freq: 'treble'});
+    moons = new Moon(player);
 
     drawQ = [ // ordering matters will decide the stacking
-      waveform, tunnel, player, powerUp, satellites.first, uiControls/*, circular*/
+      waveform, tunnel, player, powerUp, moons, uiControls/*, circular*/
     ];
 
     // particles = new VectorParticles(circleWave);
-    // satellites.bass = new Satellite(circleWave, "bass");
-    // satellites.mid = new Satellite(circleWave, "treble");
-    // satellites.treble = new Satellite(satellites.bass, "treble");
 
     $(document).on('volume:change', function(ev) {
       console.log(ev.level);
