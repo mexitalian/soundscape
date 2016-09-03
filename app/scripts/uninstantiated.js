@@ -20,12 +20,12 @@ let Sketch = function(options = {}) {
 
   let self = this;
   let defaults = {
-    audioColorMode: "RGB",
+    audioColorMode: 'RGB',
     peaksPerScreen: 3,
     peaksPerScreenBuffer: 2
   };
   let sketchSettings = $.extend({}, defaults, options);
-  const SPEED = 1;
+  // const SPEED = 1;
   let fr = 60
     , bins = 128
     , sound
@@ -36,13 +36,10 @@ let Sketch = function(options = {}) {
     , circular
     , powerUp
     , waveform
-    , circleWave
-    , particles
     , moons
     , audio
     , uiControls
     , drawQ
-    , startMillis
     ;
   let url = audioPlayer.url; // audioPlayer.urls[ Math.floor(Math.random() * audioPlayer.urls.length) ];
   let center = {};
@@ -141,19 +138,18 @@ let Sketch = function(options = {}) {
 
     // var sound is set further up the scope
 
-    let fft = new p5.FFT(0.8, bins); // 0.8 is default smoothing value
+    let fft = new p5.FFT(0.8, bins) // 0.8 is default smoothing value
+      , self = this;
 
-    this.energy;
-    this.waveform;
     this.update = function() {
 
         fft.analyze();
-        this.energy = {
-          bass: fft.getEnergy("bass"),
-          mid: fft.getEnergy("mid"),
-          treble: fft.getEnergy("treble")
+        self.energy = {
+          bass: fft.getEnergy('bass'),
+          mid: fft.getEnergy('mid'),
+          treble: fft.getEnergy('treble')
         };
-        this.waveform = fft.waveform();
+        self.waveform = fft.waveform();
     };
 
     this.toggle = function(toggle) {
@@ -172,15 +168,15 @@ let Sketch = function(options = {}) {
     let togglePlayback = function(mode) {
       switch(mode)
       {
-        case "play": sound.play(); break;
-        case "pause": sound.pause(); break;
+        case 'play': sound.play(); break;
+        case 'pause': sound.pause(); break;
       }
     };
 
     // Initialize
     // ----------
     // register custom event listener
-    $(document).on("mode:change", function(ev, mode) {
+    $(document).on('mode:change', function(ev, mode) {
       console.log(mode);
       togglePlayback(mode);
     });
@@ -224,19 +220,21 @@ let Sketch = function(options = {}) {
         , best = 0
         , get = function() {
 
-          if (self.mode === "stopped") // this should be in the drawing
+          if (self.mode === 'stopped') { // this should be in the drawing
             return;
+          }
 
-          if (!timestamp)
+          if (!timestamp) {
             timestamp = millis();
+          }
 
           current = millis() - timestamp;
 
           return {current, best};
       }
         , reset = function() {
-        best = best > current ? best : current;
-        timestamp = undefined;
+          best = best > current ? best : current;
+          timestamp = undefined;
       };
       return {get, reset};
     }();
@@ -255,7 +253,7 @@ let Sketch = function(options = {}) {
 
         this.stopwatch = stopwatch.get();
 
-        if (this.stopwatch.current > level*newLevelFreq) {
+        if (this.stopwatch.current > level * newLevelFreq) {
           level++;
           powerUp.spawn();
         }
@@ -278,7 +276,7 @@ let Sketch = function(options = {}) {
     self.peakHeightMultiplier = s.peakHeightMultiplier;
 
     let waveform = function(){
-      let paddingX = 100
+      let paddingX = 100 // are we still going to add a padding?
         , duration = sound.duration()
         , track = {
             length: width, //width-paddingX*2,
@@ -301,11 +299,11 @@ let Sketch = function(options = {}) {
         , draw = function() {
             ph.updateX();
 
-            for (let i=0; i<track.length; i++) {
-              let x = track.x+i;
-              let multiplier = x < ph.x && x > ph.x-9 ? 10+(x-ph.x)
+            for (let i = 0; i < track.length; i++) {
+              let x = track.x + i;
+              let multiplier = x < ph.x && x > ph.x - 9 ? 10 + (x - ph.x)
                 : x < ph.x ? 1 : 0.05;
-              let y1 = track.y + tunnel.peaks[i] * (multiplier*self.peakHeightMultiplier);
+              let y1 = track.y + tunnel.peaks[i] * (multiplier * self.peakHeightMultiplier);
               // let y2 = track.y + tunnel.peaks[i] * -self.peakHeightMultiplier;
 
               stroke( x < ph.x ? 255 : 0 );
@@ -317,7 +315,7 @@ let Sketch = function(options = {}) {
             }
           }
         , init = function() {
-          textFont("monospace");
+          textFont('monospace');
         };
 
       init();
@@ -327,8 +325,8 @@ let Sketch = function(options = {}) {
 
     let score = function() {
 
-      let yPos1 = height-40
-        , yPos2 = height-20
+      let yPos1 = height - 40
+        , yPos2 = height - 20
         , format = function(millis) {
           return `${floor(millis/1000)}:${floor(((millis%1000)/10))}`;
         }
@@ -346,20 +344,21 @@ let Sketch = function(options = {}) {
     }();
 
     let countIn = function() {
-      let countText = ["Ready?","Click to GO!"]
+      let countText = ['Ready?', 'Click to GO!']
         , stepDuration = fr // once per second
         , start;
 
       let draw = function(callback) {
-        if (!start)
+        if (!start) {
           start = frameCount;
+        }
 
         let i = floor((frameCount - start) / stepDuration);
         if (i < countText.length) {
           stroke(255);
           strokeWeight(2);
           textSize(32);
-          textAlign("center");
+          textAlign('center');
           text(countText[i], width/2, height/2);
         }
         else {
@@ -368,8 +367,9 @@ let Sketch = function(options = {}) {
           // NOTE: currently only works because the countIn is the last in
           // TODO: needs a robust method of finding itself
           drawQ.pop();
-          if (typeof callback === "function")
+          if (typeof callback === 'function') {
             callback();
+          }
         }
       };
 
@@ -387,7 +387,7 @@ let Sketch = function(options = {}) {
     this.countIn = function(callback) {
       s.drawCountdown = true;
       drawQ.push(
-        typeof callback === "function"
+        typeof callback === 'function'
           ? countIn.drawFactory(callback)
           : countIn.draw
         );
@@ -403,13 +403,14 @@ let Sketch = function(options = {}) {
     };
 
     // initialize
-    if (s.drawWaveform)
+    if (s.drawWaveform) {
       drawQ.push(waveform.draw);
+    }
     // if (s.drawCountdown)
     //   drawQ.push(countIn.draw);
   };
 
-  let TunnelManager = function(sound, settings) { // t::todo convert to a class (fun, nth)
+  let TunnelManager = function(settings) { // t::todo convert to a class (fun, nth)
 
     /*
       exposed
@@ -666,8 +667,7 @@ let Sketch = function(options = {}) {
     updateVertices();
   };
 
-  /*
-    ============
+  /*============
     #PowerUp
   */
 
@@ -686,14 +686,14 @@ let Sketch = function(options = {}) {
       , padding = 20
       , update = function() {
 
-        if (!self.isOnStage)
+        if (!self.isOnStage) {
           return;
-
+        }
         let {top, bottom} = tunnel.getY({x: 'right', y: 'bounds'});
 
         if (!initialX) {
           initialX = tunnel.positionX;
-          self.y = y = top + random((bottom-padding)-(top+padding));
+          self.y = y = top + random((bottom - padding) - (top + padding));
         }
 
         self.x = x = width - (tunnel.positionX - initialX);
@@ -730,10 +730,10 @@ let Sketch = function(options = {}) {
           fill(themes.active.getColor('comp'));
           ellipse(x,y, diameter, diameter);
           ellipse(
-            x+diameter*.75,
-            y+diameter*.75,
-            diameter*.25,
-            diameter*.25
+            x + diameter * .75,
+            y + diameter * .75,
+            diameter * .25,
+            diameter * .25
           );
         }
       }
@@ -758,16 +758,15 @@ let Sketch = function(options = {}) {
 
     this.draw = function() {
 
-      if (!this.isOnStage)
+      if (!this.isOnStage) {
         return;
-
+      }
       update();
       draw[type]();
     };
   };
 
-  /*
-  =============
+  /*=============
     #Moon
   */
 
@@ -776,6 +775,8 @@ let Sketch = function(options = {}) {
     let self = this
       , count = 0
       , moons = []
+      , typeList = ['bass', 'mid', 'treble']
+      , dirList = ['clockwise', 'counter']
       , defaults = {
           freq: 'bass',
           revSec: 1,
@@ -796,13 +797,14 @@ let Sketch = function(options = {}) {
         , color
         , diam
         , freq = type
+        , dir = dirList[count%2]
         //functions
         , update = function () {
           // calculate the diameter
           // get magnitude from sound.getEnergy
           diam = map(audio.energy[freq], 0, 255, 0, planet.radius);
           // get x and y using trigonometry
-          let coord = getCoord(type); // NOTE: check this works
+          let coord = getCoord(type, dir); // NOTE: check this works
           x = coord.x;
           y = coord.y;
           // get the colour and shift the Hue
@@ -827,10 +829,11 @@ let Sketch = function(options = {}) {
 
     };
 
-    let getCoord = function(freq) {
+    let getCoord = function(freq, dir) {
 
       //  returns progression around the circle every frame
-      let i = frameCount % fr
+      let i = dir === 'clockwise'
+        ? frameCount % fr : abs(frameCount % fr -360) // counter clockwise
         , x
         , y
         , hypotenuse = planet.radius + map(audio.energy[freq], 0, 255, 0, planet.radius*6); // able to drop into the planet
@@ -874,15 +877,9 @@ let Sketch = function(options = {}) {
       count++;
       if (count>0)
       {
-          moons[
-            moons.length < s.limit ? 'push' : 'pop'
-          ](new Moon(
-            count === 1
-              ? 'bass'
-              : count === 2
-                ? 'mid'
-                : 'treble'
-          ));
+        moons[
+          moons.length < s.limit ? 'push' : 'pop'
+        ](new Moon(typeList[count % 3]));
       }
     };
 
@@ -897,20 +894,30 @@ let Sketch = function(options = {}) {
     };
   };
 
+/*=========
+  #Player
+*/
+
   let Player = function() {
 
     let self = this;
     let x = self.x = center.x;
     let y = self.y = center.y; // begin at center
     self.minDiameter = 10;
-    self.maxDiameter = self.minDiameter + self.minDiameter*3;
+    self.maxDiameter = self.minDiameter + self.minDiameter*3; // *4?
     let diameter = self.diameter = self.minDiameter;
     let hasThrust = false;
-    let gravity = 6;
+    let gravity = 9;
     let thrust = 4;
+
     let resetOnFrame;
 
     self.mode = "reset";
+
+    let getAcceleration = function() {
+      // acceleration - gravity
+      return acceleration;
+    };
 
     let updateVars = function() {
 
@@ -1007,8 +1014,8 @@ let Sketch = function(options = {}) {
   };
 
 /*
-    #Wavy
   =========
+  #Wavy
 */
 
   let Wavy = function(orientation = 'tunnel') {
@@ -1376,7 +1383,7 @@ let hit = false;
 
     player = new Player();
     circular = new CircularWaveform();
-    tunnel = new TunnelManager(sound, sketchSettings);
+    tunnel = new TunnelManager(sketchSettings);
     powerUp = new PowerUp();
     waveform = new Wavy('outer');
     uiControls = new UIController();
