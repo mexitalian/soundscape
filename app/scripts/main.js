@@ -225,14 +225,14 @@ dom.$waveContainer.css({
   let onMouseClick = function(ev) {
     ev.preventDefault();
     $(document).trigger('thrust');
-    console.log('thrust');
+    // console.log('thrust');
   }
 
   $(document).one('mousedown', onMouseClick);
   $(document).on('mouseup', ev => {
     $(document).one('mousedown', onMouseClick);
     $(document).trigger('gravity');
-    console.log('gravity');
+    // console.log('gravity');
   });
 
   let onKeydown = function(ev) {

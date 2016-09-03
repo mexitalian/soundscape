@@ -904,7 +904,7 @@ let Sketch = function(options = {}) {
     let x = self.x = center.x;
     let y = self.y = center.y; // begin at center
     self.minDiameter = 10;
-    self.maxDiameter = self.minDiameter + self.minDiameter*3; // *4?
+    self.maxDiameter = self.minDiameter * 4;
     let diameter = self.diameter = self.minDiameter;
     let hasThrust = false;
     let gravity = 9;
@@ -950,8 +950,6 @@ let Sketch = function(options = {}) {
 
         case 'reset':
           y = tunnel.getY('center');
-          self.minDiameter = 1;
-          self.maxDiameter = self.minDiameter + self.minDiameter*3;
           self.mode = 'limbo';
           $(document).trigger({type: 'volume:change', level: 0.1});
           uiControls.countIn(function() {
@@ -975,29 +973,22 @@ let Sketch = function(options = {}) {
 
         case 'recovering':
 
-          let minDiameter = floor((frameCount-resetOnFrame)/18); // 18 makes it 3 seconds
-
-          if (minDiameter > self.minDiameter) {
-            self.minDiameter = minDiameter;
-            self.maxDiameter = self.minDiameter + self.minDiameter*3;
-
+          if (sound.getVolume() < 1) {
             $(document).trigger({
               type: 'volume:change',
               level: ((frameCount-resetOnFrame)/18)/10
             });
-
-            if (self.minDiameter === 10) {
-              self.mode = 'play';
-            }
           }
-
+          else {
+            self.mode = 'play';
+          }
           updateY();
           break;
 
         default: break;
       }
 
-      diameter = map(audio.energy.bass, 0, 255, self.minDiameter, self.maxDiameter);
+      diameter = map(audio.energy.bass, 100, 255, self.minDiameter, self.maxDiameter);
       self.x = x;
       self.y = y;
       self.diameter = diameter;
