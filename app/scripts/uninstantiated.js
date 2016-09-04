@@ -458,7 +458,11 @@ let Sketch = function(options = {}) {
         return self.offset - offset;
       };
       self.keepDrawingWaves = function(i) {
-        return (self.offset - offset)/(frameRateToIncreaseOffset/2) < i;
+        // the logic here is wrong
+        // TODO: fix it
+        // it's supposed to check the wave is inside the screen bounds
+        // might not be needed as the tunnel no longer grows, but rather shrinks
+        return (self.offset -  offset)/(frameRateToIncreaseOffset/2) < i;
       }
       self.update();
     }();
@@ -1014,10 +1018,10 @@ let Sketch = function(options = {}) {
     let minX, maxX, minY, maxY, offsetBaseUnit
       , prevWaves = []
       , prevColors = []
-      , self = this
-      ;
+      , self = this;
 
     self.waveWeight = 50;
+    self.waveEchoLimit = 5;
 
     switch(orientation) {
       case "vertical":
@@ -1035,7 +1039,7 @@ let Sketch = function(options = {}) {
       case 'outer':
         minX = 0;
         maxX = width;
-        offsetBaseUnit = height;
+        offsetBaseUnit = height/4;
         break;
     }
 
@@ -1090,22 +1094,25 @@ let Sketch = function(options = {}) {
     }
       , drawPrevious = function() {
 
-          let offsetUnit = round(offsetBaseUnit/4);
+          if (prevWaves.length === 0)
+            return;
 
           noFill();
           strokeWeight(self.waveWeight);
           strokeCap(PROJECT);
 
-          for (let j=0; j<prevWaves.length; j++)
-          {
-            let multi = j+1
-            let offset = multi * offsetUnit + (
-              self.waveWeight > 1
-                ? multi * (self.waveWeight * 0.3)
-                : 0
-            );
+          let limit = prevWaves.length < self.waveEchoLimit ? prevWaves.length : self.waveEchoLimit;
 
-            let strokeColor = orientation === 'outer' ? prevColors[j] : 255-offset;
+          for (let j=0; j<limit; j++)
+          {
+            let offset = offsetBaseUnit + (
+              self.waveWeight > 1
+                ? j * (self.waveWeight * 0.5)
+                : 0
+            )
+              , strokeColor = orientation === 'outer' ? prevColors[j] : 255-offset
+              ;
+
             beginShape();
             stroke(strokeColor); // waveform is progressive shades away from white
 
@@ -1119,7 +1126,7 @@ let Sketch = function(options = {}) {
                 case 'tunnel':
                 case 'vertical':
                 vertex(
-                  prevWaves[j][k].x-offset,
+                  prevWaves[j][k].x - offset,
                   prevWaves[j][k].y
                 );
                 break;
@@ -1127,7 +1134,7 @@ let Sketch = function(options = {}) {
                 case 'horizontal':
                 vertex(
                   prevWaves[j][k].x,
-                  prevWaves[j][k].y-minY-offset
+                  prevWaves[j][k].y - minY - offset
                 );
                 break;
 
@@ -1141,6 +1148,7 @@ let Sketch = function(options = {}) {
             }
             endShape();
 
+            // if it is the outer then draw a bottom repetition of the prev waves
             if (orientation === 'outer') {
               beginShape();
               stroke(strokeColor);
@@ -1158,8 +1166,8 @@ let Sketch = function(options = {}) {
               endShape();
             }
 
-            if (tunnel.limits.keepDrawingWaves(j+1)) // how many waveforms to display depends on tunnel growth
-              return;
+            // if (tunnel.limits.keepDrawingWaves(j+1)) // how many waveforms to display depends on tunnel growth
+            //   return;
           }
     };
 
@@ -1182,8 +1190,6 @@ let Sketch = function(options = {}) {
       });
       endShape();
 
-
-
       if (frameCount%frameDivider === 0) {
         prevWaves.unshift(wave);
         prevColors.unshift(themes.active.wall);
@@ -1195,13 +1201,15 @@ let Sketch = function(options = {}) {
         prevColors.pop();
       }
 
-      if (prevWaves.length > 0)
-        drawPrevious();
+      drawPrevious();
 
     };
   };
 
-
+  /*
+    =======================
+    #CircularWaveform
+  */
 
   let CircularWaveform = function(multiplier = 400) {
 
@@ -1452,6 +1460,7 @@ let hit = false;
 
     gui.add(activeTheme, 'repaintBg');
     gui.add(waveform, 'waveWeight', 1, 100).step(1);
+    gui.add(waveform, 'waveEchoLimit', 1, 5).step(1);
     // gui.add(tunnel, 'limits', 0.1, 0.9);
     gui.add(tunnel, 'maxOffsetY', -30, 30);
     gui.add(tunnel, 'reactsToBass');
