@@ -727,10 +727,10 @@ let Sketch = function(options = {}) {
         hue: function() {
           colorMode(HSB);
           fill(themes.active.getColor('comp'));
-          ellipse(x,y,diameter,diameter);
+          triangle(x, y, x - diameter/2, y + diameter, x + diameter/2, y + diameter);
         },
         moon: function() {
-
+          // two circles, one smaller and close to the larger
           fill(themes.active.getColor('comp'));
           ellipse(x,y, diameter, diameter);
           ellipse(
@@ -756,7 +756,7 @@ let Sketch = function(options = {}) {
     };
 
     this.spawn = function() {
-      type = 'moon';
+      type = floor(random(2)) ? 'hue' : 'moon';
       this.isOnStage = true;
     };
 
