@@ -906,12 +906,13 @@ let Sketch = function(options = {}) {
     let self = this;
     let x = self.x = center.x;
     let y = self.y = center.y; // begin at center
+    let velocity = 0;
     self.minDiameter = 10;
     self.maxDiameter = self.minDiameter * 4;
     let diameter = self.diameter = self.minDiameter;
-    let hasThrust = false;
-    let gravity = 9;
-    let thrust = 4;
+
+    const GRAVITY = .3;
+    const THRUST = -5;
 
     let resetOnFrame;
 
@@ -926,21 +927,20 @@ let Sketch = function(options = {}) {
 
       let updateY = function() {
 
-        if (y<height && y>0) {
-          y = mouseIsPressed || keyIsDown(32) ? y-2 : y+4;
+        let spaceIsPressed = keyIsDown(32);
+
+        if (mouseIsPressed || spaceIsPressed)
+          velocity = THRUST;
+
+        velocity += GRAVITY;
+
+        if (y <= height && y > 0) {
+          y += velocity;
         }
-        else if (y==height &&
-                (mouseIsPressed || keyIsDown(32))) {
-          y -= thrust;
-        }
-        else if (y==0 &&
-                (!mouseIsPressed || !keyIsDown(32))) {
-          y += gravity;
-        }
-        else if (y>height) {
+        else if (y > height) {
           y = height;
         }
-        else if (y<0) {
+        else if (y < 0) {
           y = 0;
         }
       };
@@ -968,10 +968,6 @@ let Sketch = function(options = {}) {
 
         case 'limbo':
           y = tunnel.getY('center');
-          // $(document).one('thrust', function() {
-          //   resetOnFrame = frameCount;
-          //   self.mode = 'recovering';
-          // });
           break;
 
         case 'recovering':
