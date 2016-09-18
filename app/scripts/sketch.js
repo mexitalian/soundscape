@@ -481,13 +481,13 @@ let Sketch = function(options = {}) {
     settings.updateValues = function() {
       updateValues();
     };
-
+/*
     this.onOrientationChange = function() { // not begin used so far
       waveWidth = Math.round(sound.duration() * width);
       peakDistance = width / settings.peaksPerScreen;
       frameDistance = width / fr;
     };
-
+*/
     let updateVertices = function() {
 
       let rawVs = [];
@@ -585,11 +585,11 @@ let Sketch = function(options = {}) {
         updateVars();
 
       beginShape();
-      // fill(themes.active.bg);
+      fill(themes.active.bg);
       // stroke(255 - sound.getVolume() * 255); // temporarilly disable fading out
-      noFill();
-      stroke(255);
-      strokeWeight(1);
+      // noFill();
+      stroke(125);
+      strokeWeight(6);
 
       for (let v of vertices) {
         vertex(v.x, v.y);
@@ -786,7 +786,6 @@ let Sketch = function(options = {}) {
           revSec: 1,
           limit: 3
           // maxDiameter: planet.radius,
-          // maxOrbit: planet.radius * 3
         }
       , s = $.extend({}, defaults, options) // settings
       , degree = 360 / (fr / s.revSec) // full revolution per second
@@ -840,7 +839,7 @@ let Sketch = function(options = {}) {
         ? frameCount % fr : abs(frameCount % fr -360) // counter clockwise
         , x
         , y
-        , hypotenuse = planet.radius + map(audio.energy[freq], 0, 255, 0, planet.radius*6); // able to drop into the planet
+        , hypotenuse = map(audio.energy[freq], 0, 255, planet.radius, planet.radius * 14); // 0 means able to drop into the planet
 
       switch (i*degree) {
         case 0:
@@ -1020,7 +1019,7 @@ let Sketch = function(options = {}) {
       , prevColors = []
       , self = this;
 
-    self.waveWeight = 50;
+    self.waveWeight = 20;
     self.waveEchoLimit = 5;
 
     switch(orientation) {
