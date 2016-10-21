@@ -18,7 +18,7 @@
 
 "use strict"
 
-let audioPlayer, myp5, sketch; // to be populated on soundcloud connect success
+let audioPlayer, soundscape; // to be populated on soundcloud connect success
 
 /*
 // Check for the various File API support.
@@ -135,12 +135,12 @@ let handleFileSelect = function(ev) {
 
   if (audioUrls.length > 0) {
     audioPlayer = new FSAudioManager(audioUrls);
-    initSketch();
+    initSoundscape();
   }
 };
 
-let initSketch = function() {
-  window.sketch = new Sketch({
+let initSoundscape = function() {
+  window.soundscape = new SoundScape({
     audioColorMode: "HSB"
   });
 };
@@ -148,7 +148,7 @@ let initSketch = function() {
 document.querySelector('.js-files').addEventListener('change', handleFileSelect, false);
 document.querySelector('.js-use-local').addEventListener('click', function(ev) {
   audioPlayer = new LocalAudioManager();
-  initSketch();
+  initSoundscape();
 });
 
 let dom = function() {
@@ -196,28 +196,11 @@ dom.$connectSoundcloud.on("click", function() {
     // console.log(pl.tracks);
 
     audioPlayer = new SoundcloudManager(pl.tracks);
-    initSketch();
+    initSoundscape();
   });
 });
 
 */
-
-/*
-dom.$getLocalFile.on("click", function() {
-  // let's get the filereader going
-
-});
-*/
-
-
-
-/*
-dom.$waveContainer.css({
-  width: `${waveformManager.width*50}px`,
-  backgroundImage: `url(${waveformManager.src})`
-});
-*/
-
 
 // Desktop
 (function() {
@@ -225,56 +208,34 @@ dom.$waveContainer.css({
   let onMouseClick = function(ev) {
     ev.preventDefault();
     $(document).trigger('thrust');
-    // console.log('thrust');
   }
-
-  $(document).one('mousedown', onMouseClick);
-  $(document).on('mouseup', ev => {
-    $(document).one('mousedown', onMouseClick);
-    $(document).trigger('gravity');
-    // console.log('gravity');
-  });
 
   let onKeydown = function(ev) {
 
     ev.preventDefault();
-
-    let left = 37
-      , up = 38
-      , right = 39
-      , down = 40
-      , space = 32;
-
-    switch(ev.keyCode) {
-      case space:
-        $(document).trigger('thrust');
-        console.log('up keydown');
-        break;
-
-      case down:  $(document).trigger('down');   break;
-      case left:  $(document).trigger('left');   break;
-      case right: $(document).trigger('right');  break;
-    }
+    if (ev.keyCode === 32) // space
+      $(document).trigger('thrust');
   }
 
-  $(document).one('keydown', onKeydown);
+  // Mouse handling
+  $(document).one('mousedown', onMouseClick);
+  $(document).on('mouseup', ev => {
+    $(document).one('mousedown', onMouseClick);
+    $(document).trigger('gravity');
+  });
 
+  // Key handling
+  $(document).one('keydown', onKeydown);
   $(document).on('keyup', ev => {
 
-    let space = 32;
-
-    if (space === ev.keyCode) {
-      console.log('up keyup');
+    if (ev.keyCode === 32) { // space
       $(document).trigger('gravity');
       $(document).one('keydown', onKeydown);
     }
   });
 
-  $(document).one('sketch:ready', function() {
+  $(document).one('soundscape:ready', function() {
     $('#canvas-capture').remove();
   })
 
 })();
-
-
-// Need a mobile on tap binding

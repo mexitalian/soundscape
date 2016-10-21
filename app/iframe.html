@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>soundcloudscape</title>
+    <title>soundscape</title>
 
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <!-- Place favicon.ico in the root directory -->
@@ -19,29 +19,18 @@
     <!-- endbuild -->
 
   </head>
-  <body>
+  <body class="iframe">
     <!--[if lt IE 10]>
       <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> to improve your experience.</p>
     <![endif]-->
-
-    <div class="hero-unit">
-      <h1>SoundScape</h1>
-      <div id="canvas" class="countainer--canvas">
-        <img src="images/canvas_capture.png" id="canvas-capture" alt="SoundScape Helicopter game example">
-      </div>
-      <h2>Helicopter Game Example</h2>
+    <img src="images/soundscape_lg.png" id="canvas-capture" alt="SoundScape Canvas capture, playable audio visualiser">
+    <div id="canvas" class="countainer--canvas">
       <p>
-        Load an MP3 from your computer or use the predefined Bach – Air on a G String. <br>
-        Press and hold spacebar or click the mouse to give upward thrust. <br>
-        <sub>The soundcloud option is currently disabled.</sub>
+        <button class="js-use-local">Play: Bach – Air on a G String</button>
+        <br>– or – <br>
+        <input type="file" class="js-files" name="files[]" multiple />
+        <output id="list" style="display:none;"></output>
       </p>
-
-      <!--<button class="js-play">Play</button>-->
-      <input type="file" class="js-files" name="files[]" multiple />
-      <output id="list"></output>
-      <button class="js-use-local">Use predefined audio</button>
-      <button class="js-connect-soundcloud" disabled>Connect SoundCloud</button>
-      <p><a href="https://docs.google.com/forms/d/e/1FAIpQLSdpvzIZlvryslp3KLCodi9VNCekGhffYwbhiJ0W20rvNMYwrA/viewform" target="_blank">Give feedback</a></p>
     </div>
 
     <!-- Google Analytics: change UA-XXXXX-X to be your site's ID. -->
@@ -70,7 +59,6 @@
 
     <!-- build:js scripts/main.js -->
     <script src="scripts/helper.js"></script>
-    <!-- <script src="scripts/sketch.js"></script> -->
     <script src="scripts/soundscape.js"></script>
     <!-- <script src="scripts/soundcloud.js"></script> -->
     <script src="scripts/main.js"></script>
