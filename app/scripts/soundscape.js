@@ -921,7 +921,7 @@ let SoundScape = function(options = {}) {
 
         let spaceIsPressed = keyIsDown(32);
 
-        if (mouseIsPressed || spaceIsPressed)
+        if (mouseIsPressed || spaceIsPressed || touchIsDown)
           velocity = THRUST;
 
         velocity += GRAVITY;
@@ -949,7 +949,7 @@ let SoundScape = function(options = {}) {
           $(document).trigger({type: 'volume:change', level: 0.1});
           uiControls.countIn(function() {
             return function() {
-              $(document).one('thrust', function() {
+              $(document).one('start', function() {
                 audio.toggle();
                 resetOnFrame = frameCount;
                 self.mode = 'recovering';
@@ -1427,6 +1427,15 @@ let hit = false;
       case ENTER: saveCanvas('canvas_capture', 'png'); break;
       /* case DOWN_ARROW: player.mode = "reset"; break; */
     }
+  };
+
+  window.touchStarted = function(ev) {
+    $(document).trigger('start');
+
+  };
+
+  window.mousePressed = function(ev) {
+    $(document).trigger('start');
   };
 
 

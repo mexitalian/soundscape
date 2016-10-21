@@ -205,37 +205,8 @@ dom.$connectSoundcloud.on("click", function() {
 // Desktop
 (function() {
 
-  let onMouseClick = function(ev) {
-    ev.preventDefault();
-    $(document).trigger('thrust');
-  }
-
-  let onKeydown = function(ev) {
-
-    ev.preventDefault();
-    if (ev.keyCode === 32) // space
-      $(document).trigger('thrust');
-  }
-
-  // Mouse handling
-  $(document).one('mousedown', onMouseClick);
-  $(document).on('mouseup', ev => {
-    $(document).one('mousedown', onMouseClick);
-    $(document).trigger('gravity');
-  });
-
-  // Key handling
-  $(document).one('keydown', onKeydown);
-  $(document).on('keyup', ev => {
-
-    if (ev.keyCode === 32) { // space
-      $(document).trigger('gravity');
-      $(document).one('keydown', onKeydown);
-    }
-  });
-
   $(document).one('soundscape:ready', function() {
     $('#canvas-capture').remove();
-  })
+  });
 
 })();
